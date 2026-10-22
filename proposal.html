@@ -1,0 +1,1104 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>보장분석 제안서 도구</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Sans+KR:wght@800;900&display=swap">
+<style>
+html{-webkit-text-size-adjust:100%}body{margin:0}
+
+/* Layout: 허브와 같은 네이비·골드 톤. 입력 4단계 탭 + 인쇄 가능한 제안서 문서 뷰 */
+:root{
+  --bg:#f5f6f8; --surface:#ffffff; --fg:#16202e; --muted:#5d6878; --line:#dfe3ea;
+  --head-bg:#16305c; --head-fg:#ffffff; --navy:#16305c; --accent:#c8952e; --accent-soft:#f6ecd7;
+  --ok:#2f66b3; --ok-bg:#e6effa; --warn:#c2501b; --warn-bg:#fdebe2; --none:#566070; --none-bg:#eceef2;
+  --hot-bg:#ffee58; --hot-line:#d71920; --hot-fg:#1b2433; --input-bg:#ffffff; --bar-ok:#5b8fd1; --bar-warn:#e8581f; --bar-none:#a3a9b3;
+  --font-body:'IBM Plex Sans KR','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  --font-head:'Noto Sans KR','IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f141d; --surface:#171e2b; --fg:#e8ecf3; --muted:#9aa5b8; --line:#2a3447;
+  --navy:#9bb8ea; --accent:#e0b157; --accent-soft:#2c2616;
+  --ok:#8db6f0; --ok-bg:#1c2b44; --warn:#f08a5a; --warn-bg:#3a2218; --none:#aab3c2; --none-bg:#232c3b; --input-bg:#111723; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0f141d; --surface:#171e2b; --fg:#e8ecf3; --muted:#9aa5b8; --line:#2a3447;
+  --navy:#9bb8ea; --accent:#e0b157; --accent-soft:#2c2616;
+  --ok:#8db6f0; --ok-bg:#1c2b44; --warn:#f08a5a; --warn-bg:#3a2218; --none:#aab3c2; --none-bg:#232c3b; --input-bg:#111723; color-scheme:dark;}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);line-height:1.55;-webkit-text-size-adjust:100%}
+*{box-sizing:border-box}
+.topbar{background:var(--head-bg);color:var(--head-fg)}
+.topbar .in{max-width:1080px;margin:0 auto;padding:14px max(16px,env(safe-area-inset-left,0px)) 14px max(16px,env(safe-area-inset-left,0px));display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.brand{font-family:var(--font-head);font-weight:900;font-size:15px;letter-spacing:-.01em}
+.brand small{font-family:var(--font-body);font-weight:500;opacity:.75;margin-left:8px}
+.topbar a{color:#f3dca5;text-decoration:none;font-size:13px;font-weight:600}
+.wrap{max-width:1080px;margin:0 auto;padding-block:24px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-family:var(--font-head);font-weight:900;font-size:clamp(24px,4vw,32px);letter-spacing:-.02em;margin:0 0 6px;text-wrap:balance}
+.lead{color:var(--muted);margin:0 0 20px;max-width:68ch}
+.banner{display:flex;gap:10px 14px;align-items:center;flex-wrap:wrap;background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px}
+.banner b{color:var(--fg)}
+.btn{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:7px 12px;cursor:pointer}
+.btn:hover{border-color:var(--navy)}
+.btn.pri{background:var(--navy);border-color:var(--navy);color:#fff}
+:root[data-theme="dark"] .btn.pri,.btn.pri{color:#fff}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.pri{background:#2b4f8f;border-color:#2b4f8f}}
+:root[data-theme="dark"] .btn.pri{background:#2b4f8f;border-color:#2b4f8f}
+.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[role=tab]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+[role=tab]{font:inherit;font-size:14px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:8px 16px;cursor:pointer}
+[role=tab] i{font-style:normal;font-weight:700;color:var(--accent);margin-right:6px}
+[role=tab][aria-selected=true]{background:var(--navy);border-color:var(--navy);color:#fff}
+[role=tab][aria-selected=true] i{color:#f3dca5}
+:root[data-theme="dark"] [role=tab][aria-selected=true]{background:#2b4f8f;border-color:#2b4f8f}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) [role=tab][aria-selected=true]{background:#2b4f8f;border-color:#2b4f8f}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px}
+.panel h2{font-family:var(--font-head);font-weight:800;font-size:18px;margin:0 0 4px}
+.panel .sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px 14px;margin-bottom:8px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:600;min-width:0}
+input,select,textarea{font:inherit;font-size:14px;color:var(--fg);background:var(--input-bg);border:1px solid var(--line);border-radius:7px;padding:7px 9px;min-width:0;width:100%}
+input.num{text-align:right;font-variant-numeric:tabular-nums}
+textarea{min-height:120px;resize:vertical}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
+th{background:var(--head-bg);color:#fff;font-weight:600;padding:8px 8px;text-align:center;white-space:nowrap;font-size:12px}
+td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td.c{text-align:center}td.r{text-align:right;font-variant-numeric:tabular-nums}
+tr.grp td{background:var(--none-bg);color:var(--muted);font-weight:700;font-size:12px;padding:5px 10px}
+.pill{display:inline-block;min-width:52px;text-align:center;border-radius:999px;padding:2px 8px;font-size:12px;font-weight:700}
+.pill.충분{background:var(--ok-bg);color:var(--ok)}.pill.부족{background:var(--warn-bg);color:var(--warn)}.pill.미가입{background:var(--none-bg);color:var(--none)}
+.arrow{color:var(--muted);margin:0 2px}
+.rowbtn{border:0;background:none;color:var(--muted);cursor:pointer;font-size:16px;padding:2px 6px}
+.rowbtn:hover{color:var(--hot-line)}
+.addrow{margin-top:10px}
+.warn{color:var(--warn);font-size:12px;font-weight:600;margin-top:8px}
+.ok{color:var(--ok);font-size:12px;font-weight:600;margin-top:8px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+
+/* ---- 제안서 문서 ---- */
+.doc{display:flex;flex-direction:column;gap:20px}
+.doc .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:clamp(16px,3vw,28px)}
+.cover{background:var(--head-bg);color:#fff;border-radius:12px;padding:clamp(20px,4vw,36px)}
+.cover small{color:#f3dca5;font-weight:600;letter-spacing:.08em;font-size:12px}
+.cover h2{font-family:var(--font-head);font-weight:900;font-size:clamp(24px,4.4vw,36px);line-height:1.2;margin:10px 0 8px;letter-spacing:-.02em;text-wrap:balance}
+.cover p{margin:0;color:#c9d2e3;font-size:14px}
+.sec h3{font-family:var(--font-head);font-weight:800;font-size:18px;margin:0 0 4px;letter-spacing:-.01em}
+.sec .sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.kpi{background:var(--bg);border-radius:10px;padding:14px 16px;min-width:0}
+.kpi .k{font-size:12px;color:var(--muted);font-weight:600}
+.kpi .v{font-family:var(--font-head);font-weight:900;font-size:22px;margin-top:4px;font-variant-numeric:tabular-nums;line-height:1.25}
+.kpi .v em{font-style:normal;color:var(--hot-line)}
+.kpi .s{font-size:12px;color:var(--muted);margin-top:2px}
+.bars{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.bar{display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center;font-size:13px}
+.bar .t{display:flex;height:34px;border-radius:8px;overflow:hidden;background:var(--none-bg)}
+.bar .t span{display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;min-width:0}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
+.legend b{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:baseline}
+.lists{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:14px}
+.lcard{border-radius:10px;padding:12px 14px;font-size:13px;min-width:0}
+.lcard.충분{background:var(--ok-bg)}.lcard.부족{background:var(--warn-bg)}.lcard.미가입{background:var(--none-bg)}
+.lcard h4{margin:0 0 4px;font-size:14px}
+.lcard.충분 h4{color:var(--ok)}.lcard.부족 h4{color:var(--warn)}.lcard.미가입 h4{color:var(--none)}
+.lcard p{margin:0;color:var(--fg)}
+.view td,.view th{padding:7px 9px}
+.view td{font-size:13px}
+.view td.name{text-align:left}
+.view td.r{white-space:nowrap}
+.hot{background:var(--hot-bg)!important;color:var(--hot-fg)!important;box-shadow:inset 0 0 0 2px var(--hot-line);font-weight:700}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600}
+.chip i{width:22px;height:14px;background:var(--hot-bg);box-shadow:inset 0 0 0 2px var(--hot-line);display:inline-block;border-radius:2px}
+.notes{margin:0;padding-left:20px;font-size:13px;display:flex;flex-direction:column;gap:6px}
+.foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:12px;padding-top:12px;border-top:1px solid var(--line)}
+.foot b{color:var(--fg)}
+.copybox{width:100%;min-height:140px;margin-top:8px}
+.tabpanel[hidden]{display:none}
+.abadge{display:inline-block;font-size:11px;font-weight:700;color:#fff;background:#2f66b3;border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:1px}
+tr.add td{background:var(--ok-bg)}
+.memo{margin-top:12px;background:var(--bg);border-left:3px solid var(--accent);border-radius:6px;padding:10px 14px;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
+.memo b{display:block;font-size:12px;color:var(--muted);margin-bottom:2px}
+.delta{font-size:11px;font-weight:700;margin-top:1px;line-height:1.2}
+.view td .delta.up{color:#1f8a3b}.view td .delta.dn{color:#2f66b3}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .view td .delta.up{color:#5fd07c}:root:not([data-theme="light"]) .view td .delta.dn{color:#8db6f0}}
+:root[data-theme="dark"] .view td .delta.up{color:#5fd07c}:root[data-theme="dark"] .view td .delta.dn{color:#8db6f0}
+.pdfroot .view td .delta.up{color:#1f8a3b}.pdfroot .view td .delta.dn{color:#2f66b3}
+.view td.chg,.view td.chg b{color:var(--hot-line);font-weight:700}
+.chip.red i{background:none;box-shadow:none;width:auto;height:auto;font-style:normal;color:var(--hot-line);font-weight:800}
+.dochead{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:2px solid var(--navy);padding-bottom:6px;font-size:12px;color:var(--muted)}
+.dochead b{font-family:var(--font-head);font-weight:900;font-size:14px;color:var(--navy)}
+.docnote{font-size:11px;line-height:1.5;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
+.docnote b{color:var(--fg)}
+.cover .agent{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.22);color:#f3dca5;font-size:13px;font-weight:600}
+.cx{display:flex;flex-direction:column;gap:8px}
+.cxrow{display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
+.cxrow .t{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.cxrow .m{grid-column:1/-1;font-size:12px;color:var(--muted)}
+.cxrow.off{background:var(--warn-bg);border-color:var(--warn)}
+.cxrow.off .t span.nm{text-decoration:line-through;color:var(--muted)}
+.xbadge{display:inline-block;font-size:11px;font-weight:700;color:#fff;background:var(--hot-line);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:1px}
+.btn.x{color:var(--hot-line);border-color:var(--hot-line)}
+tr.off td{color:var(--muted)}
+tr.off td.name span.nm{text-decoration:line-through}
+.drops{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+label.drop{position:relative;display:flex;flex-direction:column;gap:4px;border:2px dashed var(--line);border-radius:12px;padding:18px 16px;background:var(--bg);cursor:pointer;min-width:0;transition:border-color .15s,background .15s}
+label.drop:hover,label.drop.over,label.drop:focus-within{border-color:var(--accent);background:var(--accent-soft)}
+label.drop.done{border-style:solid;border-color:var(--ok)}
+label.drop.bad{border-style:solid;border-color:var(--warn)}
+label.drop .k{font-size:12px;font-weight:700;color:var(--accent)}
+label.drop b{font-family:var(--font-head);font-weight:800;font-size:16px}
+label.drop .d{color:var(--muted);font-size:12px}
+label.drop .st{font-size:12px;font-weight:600;margin-top:4px;min-height:1.2em;overflow-wrap:anywhere}
+label.drop .st.ok{color:var(--ok)}label.drop .st.err{color:var(--warn)}
+label.drop input[type=file]{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+.upmsg{margin-top:12px;font-size:13px}
+.upmsg .w{color:var(--warn);font-weight:600;margin-top:4px}
+details.um{margin-top:12px;font-size:13px}
+details.um summary{cursor:pointer;font-weight:600;color:var(--muted)}
+details.um ul{margin:8px 0 0;padding-left:20px;color:var(--muted)}
+.hint{font-size:12px;color:var(--muted);margin:10px 0 0}
+.pdfnote{font-size:12px;color:var(--muted)}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+/* PDF 내보내기용: 화면 테마와 무관하게 흰 바탕·밝은 색으로 그린다 */
+.pdfstage{position:fixed;left:-12000px;top:0;width:794px;pointer-events:none}
+.pdfroot{--bg:#f5f6f8;--surface:#ffffff;--fg:#16202e;--muted:#5d6878;--line:#dfe3ea;--navy:#16305c;--accent:#c8952e;--accent-soft:#f6ecd7;--ok:#2f66b3;--ok-bg:#e6effa;--warn:#c2501b;--warn-bg:#fdebe2;--none:#566070;--none-bg:#eceef2;--bar-ok:#5b8fd1;--bar-warn:#e8581f;--bar-none:#a3a9b3;color:var(--fg);font-family:var(--font-body);line-height:1.5}
+.pdfpage{position:relative;width:794px;height:1123px;padding:50px 40px 0;background:#fff;overflow:hidden;margin-bottom:12px}
+.pp-head{position:absolute;left:40px;right:40px;top:16px;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#5d6878;border-bottom:2px solid #16305c;padding-bottom:5px}
+.pp-head b{font-family:var(--font-head);font-weight:900;font-size:12px;color:#16305c;letter-spacing:-.01em}
+.pp-note{position:absolute;left:40px;right:40px;bottom:42px;font-size:9px;line-height:1.45;color:#6b7482}
+.pp-note b{color:#3d4654}
+.pp-body{height:985px;overflow:hidden;display:flex;flex-direction:column;gap:12px}
+.pp-foot{position:absolute;left:40px;right:40px;bottom:16px;display:flex;justify-content:space-between;font-size:11px;color:#5d6878;border-top:1px solid #dfe3ea;padding-top:8px}
+.pp-foot b{color:#16202e}
+.pdfpool{width:714px;position:absolute;left:0;top:0;visibility:hidden}
+.pdfroot .scroll{overflow:visible;border:0;background:none}
+.pdfroot table{min-width:0!important;width:100%;border-collapse:collapse}
+.pdfroot .sheet{border:1px solid #dfe3ea;padding:18px 20px;border-radius:10px}
+.pdfroot .cover{padding:26px 28px}
+.pdfroot .cover h2{font-size:30px}
+.pdfroot .kpis{grid-template-columns:repeat(3,1fr)}
+.pdfroot .lists{grid-template-columns:repeat(2,1fr)}
+.pdfroot th{font-size:11px;padding:6px 6px}
+.pdfroot td{font-size:11.5px;padding:5px 7px}
+.pdfroot .view td,.pdfroot .view th{padding:5px 7px}
+.pdfroot .hot{box-shadow:none;border:2px solid #d71920}
+.pdfroot .kpi .v{font-size:19px}
+@media (max-width:560px){.bar{grid-template-columns:1fr}}
+@media (prefers-reduced-motion: no-preference){.btn,[role=tab]{transition:background .15s,border-color .15s}}
+@media print{
+  .pdfstage{display:none!important}
+  .dochead{position:fixed;top:0;left:0;right:0;background:#fff;z-index:2}
+  .docnote{position:fixed;bottom:0;left:0;right:0;background:#fff;font-size:9px}
+  .doc{padding-top:34px;padding-bottom:46px}
+  :root:root:root{--bg:#fff;--surface:#fff;--fg:#16202e;--muted:#5d6878;--line:#dfe3ea;--navy:#16305c;--accent:#c8952e;--accent-soft:#f6ecd7;--ok:#2f66b3;--ok-bg:#e6effa;--warn:#c2501b;--warn-bg:#fdebe2;--none:#566070;--none-bg:#eceef2;--input-bg:#fff;color-scheme:light}
+  .noprint,.topbar,.tabs,.banner,h1,.lead{display:none!important}
+  .wrap{padding:0;max-width:none}
+  .sheet,.cover{break-inside:avoid-page;border:0;padding:0;margin:0 0 14px}
+  .cover{padding:18px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  tr{break-inside:avoid}
+  th,.hot,.abadge,.xbadge,tr.add td,.memo,.pill,.lcard,.bar .t span,.kpi{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+
+</head>
+<body>
+<header class="topbar"><div class="in">
+  <div class="brand">굿리치WM본부 업무 허브<small>보장분석 제안서 도구</small></div>
+  <a id="hubLink" href="index.html" hidden>← 업무 허브로</a>
+</div></header>
+
+<main class="wrap">
+  <h1>보장분석 제안서 도구</h1>
+  <p class="lead">보장분석지와 제안할 보험사의 가입제안서 PDF를 올리면 기존 계약, 37개 보장 평가, 제안 담보를 자동으로 읽어 변경 전·후 비교 분석지를 만듭니다. 파일과 고객 정보는 이 브라우저 안에서만 처리되며 저장하거나 전송하지 않습니다.</p>
+
+  <div class="banner" id="banner">
+    <span><b>예시 데이터가 들어 있습니다.</b> 가상의 고객과 금액입니다. PDF를 올리면 예시는 자동으로 바뀝니다.</span>
+    <button class="btn" id="btnClear" type="button">모두 지우고 새로 입력</button>
+    <button class="btn" id="btnSample" type="button">예시 다시 불러오기</button>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="작성 단계">
+    <button role="tab" id="tab1" aria-selected="true" aria-controls="p1" type="button"><i>1</i>자료·고객 정보</button>
+    <button role="tab" id="tab2" aria-selected="false" aria-controls="p2" type="button"><i>2</i>보장 항목 확인</button>
+    <button role="tab" id="tab3" aria-selected="false" aria-controls="p3" type="button"><i>3</i>제안 담보 확인</button>
+    <button role="tab" id="tab4" aria-selected="false" aria-controls="p4" type="button"><i>4</i>분석지 보기</button>
+  </div>
+
+  <section class="tabpanel" id="p1" role="tabpanel" aria-labelledby="tab1">
+    <div class="panel">
+      <h2>담당자 정보</h2>
+      <p class="sub">제안서 표지와 하단에 들어갑니다. 이 브라우저에 기억해 두므로 다음에는 다시 입력하지 않아도 됩니다.</p>
+      <div class="grid">
+        <label class="f">소속<input id="m-org" data-s="meta" data-f="org" placeholder="예: 굿리치 리치VIP지점" autocomplete="organization"></label>
+        <label class="f">담당자명<input id="m-agent" data-s="meta" data-f="agent" placeholder="예: 홍길동" autocomplete="name"></label>
+        <label class="f">직책<input id="m-role" data-s="meta" data-f="role" placeholder="예: 지점장" autocomplete="organization-title"></label>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h2>고객 정보</h2>
+      <p class="sub">입력한 내용은 분석지 표지에 들어갑니다. 비워 두면 “고객님”으로 표시됩니다.</p>
+      <div class="grid">
+        <label class="f">고객명<input id="m-name" data-s="meta" data-f="name" placeholder="예: 홍길동" autocomplete="off"></label>
+        <label class="f">생년월일<input id="m-birth" data-s="meta" data-f="birth" inputmode="numeric" placeholder="1990.01.01" maxlength="10" autocomplete="off"></label>
+        <label class="f">연락처<input id="m-phone" data-s="meta" data-f="phone" type="tel" inputmode="tel" placeholder="010-0000-0000" maxlength="13" autocomplete="off"></label>
+        <label class="f">보장분석 기준일<input id="m-adate" data-s="meta" data-f="adate" placeholder="2026.10.01"></label>
+        <label class="f">제안일<input id="m-pdate" data-s="meta" data-f="pdate" placeholder="2026.10.20"></label>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h2>PDF 올리기</h2>
+      <p class="sub">두 파일을 올리면 바로 분석합니다. 순서는 상관없지만 칸에 맞춰 올려 주세요. 올린 파일은 서버로 전송되지 않습니다.</p>
+      <div class="drops">
+        <label class="drop" id="dropA"><span class="k">① 기존 계약</span><b>보장분석지</b><span class="d">PDF를 끌어 놓거나 눌러서 선택</span><input type="file" id="fileA" accept="application/pdf,.pdf"><span class="st" id="stA" aria-live="polite"></span></label>
+        <label class="drop" id="dropP"><span class="k">② 제안</span><b>제안할 보험사 가입제안서</b><span class="d">PDF를 끌어 놓거나 눌러서 선택 (예: 메리츠화재)</span><input type="file" id="fileP" accept="application/pdf,.pdf"><span class="st" id="stP" aria-live="polite"></span></label>
+      </div>
+      <div class="upmsg" id="upMsg" aria-live="polite"></div>
+      <p class="hint">자동으로 읽은 값은 다음 두 단계에서 고칠 수 있습니다. 담보 이름이 다르면 일부가 자동 매칭되지 않을 수 있으니 반드시 확인해 주세요.</p>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h2>기존 계약</h2>
+      <p class="sub">월 보험료와 납입 회차로 납입 금액과 잔여 보험료를 계산합니다. 납입 회차가 전체 회차에 도달하면 완납으로 보고 현재 월 보험료에서 뺍니다.</p>
+      <div class="scroll"><table style="min-width:860px">
+        <thead><tr><th>보험사</th><th>상품명</th><th>계약일</th><th>만기일</th><th>월 보험료(원)</th><th>납입 회차</th><th>전체 회차</th><th>기납입(원)</th><th>잔여(원)</th><th></th></tr></thead>
+        <tbody id="contractRows"></tbody>
+      </table></div>
+      <div class="actions"><button class="btn addrow" id="addContract" type="button">+ 계약 추가</button></div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h2>해지 계약</h2>
+      <p class="sub">해지할 계약의 ✕를 누르면 그 계약의 보험료와 보장이 제안 후(변경 후)에서 빠집니다. 다시 누르면 되돌립니다.</p>
+      <div class="cx" id="cancelList"></div>
+      <label class="f" style="margin-top:14px">해지 사유 (분석지의 해지 계약 아래에 들어갑니다)<textarea id="m-cxreason" data-s="meta" data-f="cxreason" style="min-height:80px" placeholder="예: 갱신형 보험료 인상, 중복 보장 정리, 보장 대비 보험료 부담 등"></textarea></label>
+    </div>
+  </section>
+
+  <section class="tabpanel" id="p2" role="tabpanel" aria-labelledby="tab2" hidden>
+    <div class="panel">
+      <h2>보장 항목 37개</h2>
+      <p class="sub">변경 전은 보장분석지의 가입금액, 제안 추가는 제안서 담보를 이 항목에 자동으로 합산한 값입니다. 담보 이름으로 맞추기 때문에 빠지거나 다르게 들어간 항목은 여기서 고쳐 주세요. 가입금액이 표준 이상이면 충분, 표준 미만이면 부족, 0이면 미가입이며 단위는 만원입니다.</p>
+      <div class="scroll"><table style="min-width:900px">
+        <thead><tr><th style="text-align:left">보장 항목</th><th>표준</th><th>변경 전</th><th>제안 추가</th><th>변경 후</th><th>평가</th><th>메모(예: 유형별, 연 1회)</th></tr></thead>
+        <tbody id="itemRows"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <section class="tabpanel" id="p3" role="tabpanel" aria-labelledby="tab3" hidden>
+    <div class="panel">
+      <h2>제안 상품</h2>
+      <div class="grid">
+        <label class="f">제안 보험사<input id="m-insurer" data-s="meta" data-f="insurer" placeholder="예: 메리츠화재"></label>
+        <label class="f">상품명<input id="m-product" data-s="meta" data-f="product" placeholder="제안 보험 상품명"></label>
+        <label class="f">납입·만기<input id="m-term" data-s="meta" data-f="term" placeholder="예: 20년납 100세 만기 · 월납"></label>
+        <label class="f">보장보험료(원)<input id="m-prem" class="num" inputmode="numeric" data-s="meta" data-f="prem"></label>
+        <label class="f">실제 청구 보험료(원)<input id="m-billed" class="num" inputmode="numeric" data-s="meta" data-f="billed"></label>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h2>담보 구성</h2>
+      <p class="sub">제안 담보를 보장분석지 항목 기준으로 묶었습니다. 구분은 보장분석지 분류, 내용은 늘어나는 보장분석 항목과 금액이며, 보험료는 해당 담보 보험료의 합입니다.</p>
+      <div class="scroll"><table style="min-width:680px">
+        <thead><tr><th style="text-align:left">구분</th><th style="text-align:left">보장분석 항목 · 추가 가입금액(만원)</th><th>월 보험료(원)</th><th></th></tr></thead>
+        <tbody id="planRows"></tbody>
+        <tfoot><tr><td colspan="2" class="r"><b>담보 합계</b></td><td class="r"><b id="planTotal">0</b></td><td></td></tr></tfoot>
+      </table></div>
+      <div id="planCheck"></div>
+      <div id="umBox"></div>
+      <div class="actions"><button class="btn addrow" id="addPlan" type="button">+ 담보 묶음 추가</button></div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h2>제안 상품 설명</h2>
+      <p class="sub">추천 이유나 상품 특징을 적으면 분석지의 제안 상품 표 아래에 들어갑니다.</p>
+      <textarea id="m-pdesc" data-s="meta" data-f="pdesc" style="min-height:90px" placeholder="예: 암·뇌·심장 진단비 보완, 납입면제 기능, 해약환급금 미지급형으로 보험료 부담 완화 등"></textarea>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h2>유의사항</h2>
+      <p class="sub">한 줄에 한 항목씩 적으면 제안서 마지막 장에 목록으로 들어갑니다.</p>
+      <textarea id="m-notes" data-s="meta" data-f="notes"></textarea>
+    </div>
+  </section>
+
+  <section class="tabpanel" id="p4" role="tabpanel" aria-labelledby="tab4" hidden>
+    <div class="doc" id="doc"></div>
+  </section>
+</main>
+
+<script>
+(function(){
+  'use strict';
+  /* 보장분석지(롯데손해보험) · 가입제안서(보험사) PDF 해석. 브라우저와 node 양쪽에서 동작. 데이터는 밖으로 나가지 않는다. */
+var PC=(function(){
+  'use strict';
+  var STD_N=['상해사망','질병사망','상해 후유장해(3%↑)','질병 후유장해(3%↑)','입원 · 상해','입원 · 질병','통원 · 상해','통원 · 질병',
+   '일반암 진단비','유사암 진단비','전이암 진단비','암 수술비','고액항암치료비','뇌혈관질환 진단비','뇌졸중 진단비','뇌혈관질환 수술비',
+   '허혈성심장질환 진단비','급성심근경색 진단비','심장질환 수술비','상해 수술비','질병 수술비','상해 입원일당(만원/일)','간병인 입원일당 · 상해(만원/일)',
+   '질병 입원일당(만원/일)','간병인 입원일당 · 질병(만원/일)','장기요양자금(1~4등급)','경증이상 치매진단비','교통사고처리지원금','교통사고 벌금(대인)',
+   '교통사고 벌금(대물)','변호사선임비용','부상위로금(14급)','응급실 내원비','골절진단비','깁스치료비','화재벌금','일상생활배상책임'];
+
+  /* 텍스트 항목을 줄(y) 단위로 묶는다 */
+  function lines(items){
+    var its=items.filter(function(i){return i.str&&i.str.trim()}).map(function(i){return {x:i.transform[4],y:i.transform[5],s:i.str.trim()}});
+    its.sort(function(a,b){return b.y-a.y||a.x-b.x});
+    var rows=[],cur=null;
+    its.forEach(function(it){
+      if(cur&&Math.abs(cur.y-it.y)<=2.5){cur.items.push(it)}
+      else{cur={y:it.y,items:[it]};rows.push(cur)}
+    });
+    rows.forEach(function(r){r.items.sort(function(a,b){return a.x-b.x});r.tokens=r.items.map(function(i){return i.s});r.text=r.tokens.join(' ')});
+    return rows;
+  }
+  function isNumTok(t){return /^[\d,]+$/.test(t)||t==='-'}
+  function toN(t){return t==='-'?0:parseInt(t.replace(/,/g,''),10)}
+
+  function parseAnalysis(pages){            // pages: [{items}]  (pdf.js getTextContent().items)
+    var out={ok:false,contracts:[],std:null,have:null,adate:'',warn:[]};
+    var all=pages.map(function(p){return lines(p.items)});
+    var m=all[0]&&all[0].map(function(r){return r.text}).join(' ').match(/20\d\d\.\d\d\.\d\d/);
+    if(m) out.adate=m[0];
+    all.forEach(function(rows){
+      rows.forEach(function(r){
+        var t=r.tokens;
+        if(t.length>=8&&/^\d+$/.test(t[0])&&+t[0]===out.contracts.length+1){
+          var di=-1;for(var i=2;i<t.length;i++){if(/^\d{4}\.\d{2}\.\d{2}$/.test(t[i])){di=i;break}}
+          var pt=-1;for(i=0;i<t.length;i++){if(/^\d+\/\d+$/.test(t[i])){pt=i;break}}
+          if(di<0||pt<0) return;
+          var pr=t[pt].split('/'),fees=t.slice(pt+1).filter(function(x){return /원$/.test(x)}).map(function(x){return toN(x.replace(/원$/,''))});
+          out.contracts.push({co:t[1],name:t.slice(2,di).join(' '),start:t[di],end:t[di+1]||'',paid:pr[0],total:pr[1],fee:String(fees[0]||0)});
+        }
+      });
+    });
+    var want=[8,8,11,11,8,8,10,10];
+    for(var p=0;p<all.length&&!out.std;p++){
+      var cand=all[p].filter(function(r){return r.tokens.length>=8&&r.tokens.every(isNumTok)});
+      for(var s=0;s+8<=cand.length;s++){
+        var okk=true;for(var k=0;k<8;k++){if(cand[s+k].tokens.length!==want[k]){okk=false;break}}
+        if(okk){
+          var std=[],have=[];
+          for(k=0;k<8;k+=2){std=std.concat(cand[s+k].tokens.map(toN));have=have.concat(cand[s+k+1].tokens.map(toN))}
+          out.std=std;out.have=have;break;
+        }
+      }
+    }
+    if(!out.std){out.warn.push('보장 항목 표(37개)를 찾지 못했습니다. 보장분석지가 맞는지 확인해 주세요.')}
+    if(!out.contracts.length){out.warn.push('가입 계약 목록을 찾지 못했습니다. 계약은 직접 입력할 수 있습니다.')}
+    out.per=out.std?perContract(pages,out):null;
+    out.ok=!!out.std;
+    return out;
+  }
+  /* 보장분석지의 계약별 보장 표(평가 셀 37개, 위→아래·왼→오 순서)를 37개 항목 순서로 연결 */
+  var CELL_MAP=[1,0, 3,2, 5,4, 7,6, 8,11, 9,12, 10, 13,15, 14, 16,18, 17, 20,19, 23,21, 24,22, 25,26, 27,30, 28,31, 29, 32,35, 33,36, 34];
+  function perContract(pages,out){
+    var n=out.contracts.length; if(!n) return null;
+    var per=out.contracts.map(function(){return STD_N.map(function(){return 0})}),seen=0,grids=0;
+    for(var p=0;p<pages.length;p++){
+      var its=pages[p].items.filter(function(i){return i.str&&i.str.trim()}).map(function(i){return {x:i.transform[4],y:i.transform[5],s:i.str.trim()}});
+      var ev=its.filter(function(i){return /^(충분|부족|미가입)$/.test(i.s)&&i.x<320});
+      if(ev.length!==37) continue;
+      var split=(Math.min.apply(null,ev.map(function(e){return e.x}))+Math.max.apply(null,ev.map(function(e){return e.x})))/2;
+      ev.forEach(function(e){e.side=e.x<split?0:1});
+      ev.sort(function(a,b){return (Math.abs(a.y-b.y)<=2.5?0:b.y-a.y)||a.side-b.side});
+      var top=Math.max.apply(null,ev.map(function(e){return e.y}));
+      var heads=its.filter(function(i){return i.x>400&&i.y>top+6&&i.y<top+40&&/^[\d,]+원$/.test(i.s)}).sort(function(a,b){return a.x-b.x});
+      if(!heads.length) continue;
+      var gap=heads.length>1?(heads[heads.length-1].x-heads[0].x)/(heads.length-1):100,half=gap/4;
+      grids++;
+      ev.forEach(function(e,ci){
+        var item=CELL_MAP[ci];
+        its.forEach(function(v){
+          if(v.x<=400||Math.abs(v.y-e.y)>2.5||!/^[\d,]+$/.test(v.s)) return;
+          var best=-1,bd=1e9; heads.forEach(function(h,k){var d=Math.abs(v.x-(h.x+half));if(d<bd){bd=d;best=k}});
+          var side=v.x<heads[best].x+half?0:1;
+          if(side!==e.side) return;
+          var k=seen+best; if(k<n) per[k][item]+=parseInt(v.s.replace(/,/g,''),10);
+        });
+      });
+      seen+=heads.length;
+    }
+    if(!grids||seen!==n) return null;
+    for(var i=0;i<37;i++){ var s=0; for(var k=0;k<n;k++) s+=per[k][i]; if(s!==out.have[i]) return null; }
+    return per;
+  }
+
+  /* ---------- 가입제안서 ---------- */
+  function amt(s){                         // "1천만원" -> 1000(만원)
+    s=String(s).replace(/\s/g,'');
+    var v=0,re=/(\d[\d,]*)(억|천만|백만|만)?/g,m,any=false;
+    var base=s.replace(/원$/,'');
+    if(!/[억만]/.test(base)){return Math.round(parseInt(base.replace(/,/g,''),10)/10000)}
+    while((m=re.exec(base))){
+      var n=parseInt(m[1].replace(/,/g,''),10);
+      if(m[2]==='억')v+=n*10000;else if(m[2]==='천만')v+=n*1000;else if(m[2]==='백만')v+=n*100;else if(m[2]==='만')v+=n;
+      any=true;
+    }
+    return any?v:0;
+  }
+  var INSURERS=['메리츠','삼성화재','현대해상','DB손해','DB손보','KB손해','KB손보','한화손해','한화생명','흥국','롯데손해','롯데손보','MG손해','농협','신한라이프','삼성생명','교보','라이나','처브','AIA','푸본'];
+  function parseProposal(pages){
+    var out={ok:false,cov:[],meta:{},warn:[]};
+    var all=pages.map(function(p){return lines(p.items)}),text=all.map(function(rs){return rs.map(function(r){return r.text}).join('\n')}).join('\n');
+    var f=INSURERS.filter(function(n){return text.indexOf(n)>=0});
+    out.meta.insurer=f.length?f[0].replace('손해','').replace('손보','')+'':'';
+    var pm=text.match(/\(무\)\s*[^\n]{4,80}/); if(pm) out.meta.product=pm[0].replace(/\s*\(해약.*$/,'').replace(/\s+(보장보험\d+\(.*$)/,' $1').slice(0,70).trim();
+    var ins=text.match(/피보험자\s*:\s*([가-힣A-Za-z]{2,10})/); if(ins) out.meta.insured=ins[1];
+    var tm=text.match(/(\d+년납\s*\d+세만기)\s*\|?\s*(월납|연납|일시납)?/); if(tm) out.meta.term=(tm[1]+(tm[2]?' · '+tm[2]:'')).trim();
+    var pr=text.match(/보장보험료[^\d\n]{0,6}([\d,]{4,})\s*원/); if(pr) out.meta.prem=parseInt(pr[1].replace(/,/g,''),10);
+    var b1=text.match(/1회차보험료[^\n]*?\s([\d,]{4,})\s*원/); if(b1) out.meta.billed=parseInt(b1[1].replace(/,/g,''),10);
+    var dm=text.match(/(20\d\d\.\d\d\.\d\d)\s+\d\d:\d\d:\d\d/); if(dm) out.meta.pdate=dm[1];
+
+    pages.forEach(function(pg){
+      var its=pg.items.filter(function(i){return i.str&&i.str.trim()}).map(function(i){return {x:i.transform[4],y:i.transform[5],s:i.str.trim()}});
+      var hA=its.filter(function(i){return i.s==='가입금액'})[0],hP=its.filter(function(i){return /^보험료\(원\)$/.test(i.s)})[0],hT=its.filter(function(i){return /^납기\/만기$/.test(i.s)})[0];
+      if(!hA||!hP) return;
+      var amtItems=its.filter(function(i){return Math.abs(i.x-hA.x)<60&&i.y<hA.y&&/^\d[\d,]*(억|천만|백만|만)*\s*(억|천만|백만|만)?원$/.test(i.s)&&/[억만]/.test(i.s)});
+      amtItems.sort(function(a,b){return b.y-a.y});
+      var nameMax=hA.x-8,pMax=hT?hT.x-4:hP.x+70;
+      amtItems.forEach(function(a,idx){
+        var up=idx?(amtItems[idx-1].y+a.y)/2:a.y+14,dn=idx<amtItems.length-1?(amtItems[idx+1].y+a.y)/2:a.y-14;
+        var band=its.filter(function(i){return i.y<=up+0.01&&i.y>dn});
+        var code=band.filter(function(i){return /^\d{1,4}$/.test(i.s)&&i.x>55&&i.x<100})[0];
+        var nm=band.filter(function(i){return i.x>=100&&i.x<nameMax}).sort(function(p,q){return q.y-p.y||p.x-q.x}).map(function(i){return i.s}).join('');
+        var pm2=band.filter(function(i){return i.x>=hP.x-18&&i.x<pMax&&/^[\d,]+$/.test(i.s)})[0];
+        var renew=band.some(function(i){return /갱신/.test(i.s)})||/갱신형|갱신\)/.test(nm);
+        if(!nm) return;
+        out.cov.push({code:code?code.s:'',name:nm,amt:amt(a.s),amtRaw:a.s,prem:pm2?parseInt(pm2.s.replace(/,/g,''),10):0,renew:renew});
+      });
+    });
+    if(!out.cov.length) out.warn.push('담보 목록(가입담보·가입금액·보험료)을 찾지 못했습니다. 이 형식은 직접 입력 탭을 이용해 주세요.');
+    var sum=out.cov.reduce(function(a,c){return a+c.prem},0); out.sum=sum;
+    if(out.meta.prem&&sum&&sum!==out.meta.prem) out.warn.push('담보별 보험료 합계('+sum.toLocaleString('ko-KR')+'원)가 보장보험료('+out.meta.prem.toLocaleString('ko-KR')+'원)와 다릅니다. 제안 담보 탭에서 확인해 주세요.');
+    out.ok=out.cov.length>0;
+    return out;
+  }
+
+  /* ---------- 담보 → 37개 보장 항목 매칭 ---------- */
+  function short(n){
+    n=n.replace(/\((건강가입|연간1회한|유사암제외|전이포함|\d+년갱신|1일이상[^)]*)\)/g,'');
+    var m=n.match(/\[(.+)\]/); if(m&&m[1]!=='기본계약') n=m[1]; else n=n.replace(/\[.*?\]/g,'');
+    return n.replace(/\(\)/g,'').replace(/\s+/g,' ').trim();
+  }
+  function mapCoverages(cov){
+    var acc={}; STD_N.forEach(function(n){acc[n]={sum:0,max:0,vals:[],base:0,jong:[],note:'',hit:0}});
+    var unmatched=[];
+    function A(n){return acc[n]}
+    cov.forEach(function(c){
+      var n=c.name,a=c.amt,hit=false; c.items=[];
+      function sum(k){A(k).sum+=a;A(k).hit++;hit=true;c.items.push(k)}
+      function mx(k){A(k).max=Math.max(A(k).max,a);A(k).hit++;hit=true;c.items.push(k)}
+      if(/상해사망/.test(n)) sum('상해사망');
+      if(/질병사망/.test(n)) sum('질병사망');
+      if(/후유장해/.test(n)&&/3%/.test(n)){ if(/상해/.test(n)) sum('상해 후유장해(3%↑)'); if(/질병/.test(n)) sum('질병 후유장해(3%↑)'); }
+      if(/암진단비/.test(n)&&!/유사암진단비/.test(n)&&!/통합암진단비/.test(n)&&!/소액암/.test(n)){ sum('일반암 진단비'); if(/전이/.test(n)) sum('전이암 진단비'); }
+      if(/통합암진단비/.test(n)){ mx('전이암 진단비'); A('전이암 진단비').note='유형별'; }
+      if(/유사암/.test(n)&&!/제외/.test(n)&&/진단비/.test(n)) sum('유사암 진단비');
+      if(/암\s*수술비/.test(n)) sum('암 수술비');
+      if(/암.*통합치료비|표적항암.*치료비/.test(n)){ mx('고액항암치료비'); A('고액항암치료비').note='연 한도'; }
+      if(/뇌혈관질환진단비/.test(n)){ sum('뇌혈관질환 진단비'); sum('뇌졸중 진단비'); }
+      if(/뇌졸중진단비/.test(n)) sum('뇌졸중 진단비');
+      if(/허혈성심장질환진단비/.test(n)){ sum('허혈성심장질환 진단비'); sum('급성심근경색 진단비'); }
+      if(/급성심근경색.*진단비/.test(n)) sum('급성심근경색 진단비');
+      if(/131대질병수술비\(뇌혈관/.test(n)) sum('뇌혈관질환 수술비');
+      if(/131대질병수술비\(심장/.test(n)) sum('심장질환 수술비');
+      if(/^상해수술비/.test(n)){A('상해 수술비').base+=a;A('상해 수술비').hit++;hit=true;c.items.push('상해 수술비')}
+      if(/^질병수술비/.test(n)){A('질병 수술비').base+=a;A('질병 수술비').hit++;hit=true;c.items.push('질병 수술비')}
+      if(/수술비.{0,12}상해\d종/.test(n)){A('상해 수술비').jong.push(a);hit=true;c.items.push('상해 수술비')}
+      if(/수술비.{0,12}질병\d종/.test(n)){A('질병 수술비').jong.push(a);hit=true;c.items.push('질병 수술비')}
+      if(/입원일당/.test(n)){
+        var k=/간병/.test(n)?(/상해/.test(n)?'간병인 입원일당 · 상해(만원/일)':'간병인 입원일당 · 질병(만원/일)'):(/상해/.test(n)?'상해 입원일당(만원/일)':'질병 입원일당(만원/일)');
+        A(k).vals.push(a);A(k).hit++;hit=true;c.items.push(k);
+      }
+      if(/장기요양|요양자금/.test(n)) sum('장기요양자금(1~4등급)');
+      if(/치매진단/.test(n)) sum('경증이상 치매진단비');
+      if(/교통사고처리지원금/.test(n)) sum('교통사고처리지원금');
+      if(/벌금/.test(n)&&/대인/.test(n)) sum('교통사고 벌금(대인)');
+      if(/벌금/.test(n)&&/대물/.test(n)) sum('교통사고 벌금(대물)');
+      if(/변호사/.test(n)) sum('변호사선임비용');
+      if(/부상위로금/.test(n)) sum('부상위로금(14급)');
+      if(/응급실/.test(n)) sum('응급실 내원비');
+      if(/골절진단/.test(n)) sum('골절진단비');
+      if(/깁스/.test(n)) sum('깁스치료비');
+      if(/화재벌금/.test(n)) sum('화재벌금');
+      if(/일상생활.*배상/.test(n)) sum('일상생활배상책임');
+      if(!hit) unmatched.push(c);
+    });
+    var add={},note={};
+    function f(n){return n.toLocaleString('ko-KR')}
+    STD_N.forEach(function(k){
+      var a=acc[k],v=0,nt=a.note;
+      if(a.vals.length){v=Math.min.apply(null,a.vals);var mxv=Math.max.apply(null,a.vals);if(mxv!==v) nt='병실별 '+f(v)+'~'+f(mxv)}
+      else if(a.base||a.jong.length){
+        var mn=a.jong.length?Math.min.apply(null,a.jong):0,mxj=a.jong.length?Math.max.apply(null,a.jong):0;
+        v=a.base+mn; if(a.jong.length&&mxj!==mn) nt='종별 최대 '+f(a.base+mxj);
+      } else if(a.max){v=a.max}
+      else v=a.sum;
+      if(v>0){add[k]=v;if(nt)note[k]=nt}
+    });
+    return {add:add,note:note,unmatched:unmatched};
+  }
+  var STD_G=['사망','사망','후유장해','후유장해','실손의료비','실손의료비','실손의료비','실손의료비','암','암','암','암','암','뇌혈관질환','뇌혈관질환','뇌혈관질환',
+   '심장질환','심장질환','심장질환','수술비','수술비','입원비','입원비','입원비','입원비','요양·치매','요양·치매','운전자','운전자','운전자','운전자','운전자','기타','기타','기타','기타','기타'];
+  /* 제안 담보를 보장분석지 37개 항목 기준으로 묶는다: 구분 = 보장분석지 분류, 주요 담보 = 늘어나는 보장분석 항목과 금액 */
+  function groupPlan(cov,M){
+    M=M||mapCoverages(cov);
+    function f(n){return n.toLocaleString('ko-KR')}
+    var order=[],G={};
+    STD_G.forEach(function(g){if(!G[g]){G[g]={g:g,fee:0,items:[]};order.push(g)}});
+    var OUT='보장분석 항목 외';G[OUT]={g:OUT,fee:0,n:0};order.push(OUT);
+    STD_N.forEach(function(k,i){ if(M.add[k]) G[STD_G[i]].items.push(k) });
+    cov.forEach(function(c){
+      var k=(c.items||[])[0];
+      if(k){G[STD_G[STD_N.indexOf(k)]].fee+=c.prem}else{G[OUT].fee+=c.prem;G[OUT].n++}
+    });
+    return order.filter(function(g){return g===OUT?G[g].n>0:G[g].items.length||G[g].fee}).map(function(g){
+      var x=G[g],d;
+      if(g===OUT) d='보장분석 37개 항목에 해당하지 않는 담보 '+x.n+'개';
+      else d=x.items.map(function(k){return k+' '+f(M.add[k])+(M.note[k]?'('+M.note[k]+')':'')}).join(' · ');
+      return {g:g,d:d,fee:String(x.fee)};
+    });
+  }
+  return {STD_N:STD_N,parseAnalysis:parseAnalysis,parseProposal:parseProposal,mapCoverages:mapCoverages,groupPlan:groupPlan,short:short};
+})();
+
+  var STD=[
+    ['사망','상해사망',20000],['사망','질병사망',10000],
+    ['후유장해','상해 후유장해(3%↑)',5000],['후유장해','질병 후유장해(3%↑)',3000],
+    ['실손의료비','입원 · 상해',5000],['실손의료비','입원 · 질병',5000],['실손의료비','통원 · 상해',30],['실손의료비','통원 · 질병',30],
+    ['암','일반암 진단비',3000],['암','유사암 진단비',1000],['암','전이암 진단비',2000],['암','암 수술비',300],['암','고액항암치료비',7000],
+    ['뇌혈관질환','뇌혈관질환 진단비',1000],['뇌혈관질환','뇌졸중 진단비',2000],['뇌혈관질환','뇌혈관질환 수술비',1000],
+    ['심장질환','허혈성심장질환 진단비',1000],['심장질환','급성심근경색 진단비',2000],['심장질환','심장질환 수술비',1000],
+    ['수술비','상해 수술비',100],['수술비','질병 수술비',30],
+    ['입원비','상해 입원일당(만원/일)',3],['입원비','간병인 입원일당 · 상해(만원/일)',12],['입원비','질병 입원일당(만원/일)',3],['입원비','간병인 입원일당 · 질병(만원/일)',12],
+    ['요양·치매','장기요양자금(1~4등급)',2000],['요양·치매','경증이상 치매진단비',1000],
+    ['운전자','교통사고처리지원금',20000],['운전자','교통사고 벌금(대인)',3000],['운전자','교통사고 벌금(대물)',500],['운전자','변호사선임비용',5000],['운전자','부상위로금(14급)',30],
+    ['기타','응급실 내원비',5],['기타','골절진단비',30],['기타','깁스치료비',30],['기타','화재벌금',2000],['기타','일상생활배상책임',10000]
+  ];
+  if(STD.length!==37) throw new Error('item count');
+  STD.forEach(function(s,i){ if(s[1]!==PC.STD_N[i]) throw new Error('item order '+i) });
+
+  var DEFAULT_NOTES=[
+    '해약환급금 미지급형 등 상품 유형에 따라 중도 해지 시 환급금이 없거나 적을 수 있습니다.',
+    '갱신형 담보가 있으면 갱신 시점에 보험료가 오를 수 있습니다.',
+    '암 보장은 계약일 90일 이후 개시되며, 담보에 따라 계약 후 1년 이내 지급액이 감액될 수 있습니다.',
+    '기존 계약 해지는 신규 계약 성립을 확인한 뒤 진행하고, 해지 시 환급금과 보장 공백을 반드시 확인해야 합니다.',
+    '청약철회는 증권 수령일부터 15일 이내(청약일부터 30일 초과 시 불가)에 할 수 있습니다.',
+    '본 자료는 이해를 돕기 위한 참고용이며 보험금 지급의 근거가 되지 않습니다. 정확한 내용은 상품설명서와 약관을 확인해 주세요.'
+  ].join('\n');
+
+  var SAMPLE_BEFORE={'상해사망':7000,'질병사망':3000,'상해 후유장해(3%↑)':5000,'실손의료비':0,'일반암 진단비':1500,'뇌졸중 진단비':1000,'교통사고처리지원금':20000,'교통사고 벌금(대인)':3000,'교통사고 벌금(대물)':500,'변호사선임비용':3000,'일상생활배상책임':10000,'입원 · 상해':5000,'입원 · 질병':5000,'통원 · 상해':30,'통원 · 질병':30,'골절진단비':20};
+  var SAMPLE_ADD={'일반암 진단비':2000,'유사암 진단비':600,'전이암 진단비':1000,'뇌혈관질환 진단비':1000,'뇌졸중 진단비':1000,'허혈성심장질환 진단비':1000,'급성심근경색 진단비':1000,'상해 수술비':120,'질병 수술비':40,'상해 입원일당(만원/일)':3,'질병 입원일당(만원/일)':3};
+  var SAMPLE_NOTE={'전이암 진단비':'유형별 각 1,000','상해 수술비':'수술 종별 지급','질병 수술비':'수술 종별 지급'};
+
+  var SAMPLE_PER=[
+    {'상해사망':5000,'질병사망':3000,'상해 후유장해(3%↑)':5000,'입원 · 상해':5000,'입원 · 질병':5000,'통원 · 상해':30,'통원 · 질병':30,'일반암 진단비':1500,'뇌졸중 진단비':1000,'골절진단비':20},
+    {'상해사망':2000,'교통사고처리지원금':20000,'교통사고 벌금(대인)':3000,'교통사고 벌금(대물)':500,'변호사선임비용':3000,'일상생활배상책임':10000}
+  ];
+  function perArr(o){return STD.map(function(s){return o[s[1]]||0})}
+  var AG_KEY='goodrich-proposal-agent';
+  function agentDefaults(){
+    var d={org:'굿리치',agent:'황원모',role:'지점장'};
+    try{var s=JSON.parse(localStorage.getItem(AG_KEY)||'null');if(s&&typeof s==='object'){['org','agent','role'].forEach(function(k){if(typeof s[k]==='string')d[k]=s[k]})}}catch(e){}
+    return d;
+  }
+  function saveAgent(){try{localStorage.setItem(AG_KEY,JSON.stringify({org:S.meta.org||'',agent:S.meta.agent||'',role:S.meta.role||''}))}catch(e){}}
+  function withAgent(m){var a=agentDefaults();m.org=a.org;m.agent=a.agent;m.role=a.role;return m}
+  function agentLine(){return [S.meta.org,S.meta.agent,S.meta.role].map(function(x){return (x||'').trim()}).filter(Boolean).join(' ')||'굿리치WM본부'}
+  var DISCLAIMER='본 제안서는 고객님의 이해를 돕기 위해 작성된 요약 자료이며, 실제 보장 내용 및 지급 제한 사유 등은 반드시 약관 및 상품설명서를 참조하시기 바랍니다. 보험계약 체결 전 상품설명서와 약관을 반드시 읽어보시기 바랍니다.';
+  function blankItems(){return STD.map(function(s){return {g:s[0],n:s[1],std:String(s[2]),before:'',add:'',note:''}})}
+  function sample(){
+    var items=blankItems().map(function(it){
+      if(SAMPLE_BEFORE[it.n]!=null && SAMPLE_BEFORE[it.n]!==0) it.before=String(SAMPLE_BEFORE[it.n]);
+      if(SAMPLE_ADD[it.n]) it.add=String(SAMPLE_ADD[it.n]);
+      if(SAMPLE_NOTE[it.n]) it.note=SAMPLE_NOTE[it.n];
+      return it;
+    });
+    return {
+      meta:withAgent({cxreason:'',pdesc:'예시 문구: 부족한 암·뇌·심장 진단비를 보완하는 구성입니다.',name:'홍길동(예시)',birth:'1990.01.01',phone:'010-0000-0000',insurer:'예시화재',adate:'2026.10.01',pdate:'2026.10.20',product:'예시 건강보장보험',term:'20년납 100세 만기 · 월납',prem:'100000',billed:'100000',notes:DEFAULT_NOTES}),
+      contracts:[
+        {co:'A생명',name:'예시 종신보험',start:'2010.03.01',end:'종신',fee:'80000',paid:'120',total:'120',per:perArr(SAMPLE_PER[0])},
+        {co:'B화재',name:'예시 운전자보험',start:'2023.05.10',end:'2043.05.10',fee:'12000',paid:'30',total:'240',per:perArr(SAMPLE_PER[1])}
+      ],
+      items:items,
+      plan:[
+        {g:'암',d:'일반암 진단비 2,000 · 유사암 진단비 600 · 전이암 진단비 1,000(유형별 각 1,000)',fee:'40000'},
+        {g:'뇌혈관질환',d:'뇌혈관질환 진단비 1,000 · 뇌졸중 진단비 1,000',fee:'15000'},
+        {g:'심장질환',d:'허혈성심장질환 진단비 1,000 · 급성심근경색 진단비 1,000',fee:'10000'},
+        {g:'수술비',d:'상해 수술비 120 · 질병 수술비 40',fee:'25000'},
+        {g:'입원비',d:'상해 입원일당(만원/일) 3 · 질병 입원일당(만원/일) 3',fee:'10000'}
+      ],
+      example:true
+    };
+  }
+  function blank(){
+    return {meta:withAgent({name:'',birth:'',phone:'',insurer:'',cxreason:'',pdesc:'',adate:'',pdate:'',product:'',term:'',prem:'',billed:'',notes:DEFAULT_NOTES}),
+      contracts:[{co:'',name:'',start:'',end:'',fee:'',paid:'',total:''}],
+      items:blankItems(), plan:[{g:'',d:'',fee:''}], example:false};
+  }
+
+  var S=sample();
+  var $=function(id){return document.getElementById(id)};
+  function num(v){var n=parseFloat(String(v==null?'':v).replace(/[^\d.\-]/g,''));return isNaN(n)?0:n}
+  function fmt(n){return Math.round(n).toLocaleString('ko-KR')}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function ev(std,val){ if(val<=0) return '미가입'; return val>=std?'충분':'부족'; }
+  function pill(s){return '<span class="pill '+s+'">'+s+'</span>'}
+  function pct(a,b){return b?Math.round(a/b*100)+'%':'0%'}
+
+  var inFrame=false; try{inFrame=window.self!==window.top}catch(e){inFrame=true}
+  if(!inFrame) $('hubLink').hidden=false;
+
+  /* ---------- 입력 화면 ---------- */
+  function buildContracts(){
+    $('contractRows').innerHTML=S.contracts.map(function(c,i){
+      return '<tr>'+
+        '<td><input data-s="contract" data-i="'+i+'" data-f="co" value="'+esc(c.co)+'" aria-label="보험사"></td>'+
+        '<td><input data-s="contract" data-i="'+i+'" data-f="name" value="'+esc(c.name)+'" aria-label="상품명"></td>'+
+        '<td><input data-s="contract" data-i="'+i+'" data-f="start" value="'+esc(c.start)+'" placeholder="2020.01.01" aria-label="계약일"></td>'+
+        '<td><input data-s="contract" data-i="'+i+'" data-f="end" value="'+esc(c.end)+'" placeholder="2040.01.01" aria-label="만기일"></td>'+
+        '<td><input class="num" inputmode="numeric" data-s="contract" data-i="'+i+'" data-f="fee" value="'+esc(c.fee)+'" aria-label="월 보험료"></td>'+
+        '<td><input class="num" inputmode="numeric" data-s="contract" data-i="'+i+'" data-f="paid" value="'+esc(c.paid)+'" aria-label="납입 회차"></td>'+
+        '<td><input class="num" inputmode="numeric" data-s="contract" data-i="'+i+'" data-f="total" value="'+esc(c.total)+'" aria-label="전체 회차"></td>'+
+        '<td class="r" id="cp'+i+'"></td><td class="r" id="cr'+i+'"></td>'+
+        '<td class="c"><button class="rowbtn" type="button" data-del="contract" data-i="'+i+'" aria-label="계약 삭제">✕</button></td></tr>';
+    }).join('');
+    calcContracts();
+  }
+  function calcContracts(){
+    S.contracts.forEach(function(c,i){
+      var fee=num(c.fee),paid=num(c.paid),tot=num(c.total);
+      var a=$('cp'+i),b=$('cr'+i); if(a) a.textContent=fmt(fee*paid); if(b) b.textContent=fmt(fee*Math.max(tot-paid,0));
+    });
+  }
+  function buildItems(){
+    var last='',h='';
+    S.items.forEach(function(it,i){
+      if(it.g!==last){h+='<tr class="grp"><td colspan="7">'+esc(it.g)+'</td></tr>';last=it.g}
+      h+='<tr>'+
+        '<td>'+esc(it.n)+'</td>'+
+        '<td><input class="num" inputmode="numeric" data-s="item" data-i="'+i+'" data-f="std" value="'+esc(it.std)+'" aria-label="'+esc(it.n)+' 표준"></td>'+
+        '<td><input class="num" inputmode="numeric" data-s="item" data-i="'+i+'" data-f="before" value="'+esc(it.before)+'" aria-label="'+esc(it.n)+' 변경 전"></td>'+
+        '<td><input class="num" inputmode="numeric" data-s="item" data-i="'+i+'" data-f="add" value="'+esc(it.add)+'" aria-label="'+esc(it.n)+' 제안 추가"></td>'+
+        '<td class="r" id="ia'+i+'"></td><td class="c" id="ie'+i+'"></td>'+
+        '<td><input data-s="item" data-i="'+i+'" data-f="note" value="'+esc(it.note)+'" aria-label="'+esc(it.n)+' 메모"></td></tr>';
+    });
+    $('itemRows').innerHTML=h; calcItems();
+  }
+  function live(c){return !!(c.co||c.name||num(c.fee))}
+  function cancelSub(){
+    var sub=STD.map(function(){return 0});
+    S.contracts.forEach(function(c){ if(c.cancel&&live(c)&&c.per) c.per.forEach(function(v,i){sub[i]+=v}) });
+    return sub;
+  }
+  function buildCancel(){
+    var box=$('cancelList'); if(!box) return;
+    var list=S.contracts.map(function(c,i){return {c:c,i:i}}).filter(function(o){return live(o.c)});
+    if(!list.length){box.innerHTML='<p class="hint" style="margin:0">기존 계약을 입력하거나 보장분석지를 올리면 여기에 표시됩니다.</p>';return}
+    box.innerHTML=list.map(function(o){
+      var c=o.c,lost='';
+      if(c.per){ var parts=[]; c.per.forEach(function(v,k){ if(v) parts.push(STD[k][1]+' '+fmt(v)) }); lost=parts.length?'빠지는 보장: '+parts.join(', '):'이 계약에서 읽은 보장 항목이 없습니다.' }
+      else lost='계약별 보장 내역이 없어 해지하면 보험료만 빠집니다. 보장은 2단계 표에서 직접 줄여 주세요.';
+      return '<div class="cxrow'+(c.cancel?' off':'')+'"><div class="t"><span class="nm">'+esc(c.co)+' · '+esc(c.name)+' · 월 '+fmt(num(c.fee))+'원</span>'+(c.cancel?'<span class="xbadge">해지</span>':'')+'</div>'+
+        '<button class="btn'+(c.cancel?'':' x')+'" type="button" data-cancel="'+o.i+'" aria-label="'+esc(c.co+' '+c.name)+(c.cancel?' 해지 취소':' 해지')+'">'+(c.cancel?'되돌리기':'✕ 해지')+'</button>'+
+        '<div class="m">'+esc(lost)+'</div></div>';
+    }).join('');
+  }
+  function calcItems(){
+    var sub=cancelSub();
+    S.items.forEach(function(it,i){
+      var std=num(it.std),b=num(it.before),a=num(it.add),f=Math.max(b-sub[i],0)+a;
+      var x=$('ia'+i),y=$('ie'+i);
+      if(x) x.innerHTML='<b>'+fmt(f)+'</b>';
+      if(y) y.innerHTML=pill(ev(std,b))+'<span class="arrow">→</span>'+pill(ev(std,f));
+    });
+  }
+  function buildPlan(){
+    $('planRows').innerHTML=S.plan.map(function(p,i){
+      return '<tr>'+
+        '<td><input data-s="plan" data-i="'+i+'" data-f="g" value="'+esc(p.g)+'" aria-label="구분"></td>'+
+        '<td><input data-s="plan" data-i="'+i+'" data-f="d" value="'+esc(p.d)+'" aria-label="주요 담보"></td>'+
+        '<td><input class="num" inputmode="numeric" data-s="plan" data-i="'+i+'" data-f="fee" value="'+esc(p.fee)+'" aria-label="월 보험료"></td>'+
+        '<td class="c"><button class="rowbtn" type="button" data-del="plan" data-i="'+i+'" aria-label="담보 묶음 삭제">✕</button></td></tr>';
+    }).join(''); calcPlan();
+  }
+  function planTotal(){return S.plan.reduce(function(a,p){return a+num(p.fee)},0)}
+  function calcPlan(){
+    var t=planTotal(); $('planTotal').textContent=fmt(t);
+    var prem=num(S.meta.prem), box=$('planCheck');
+    if(prem>0 && t>0){
+      box.innerHTML = t===prem ? '<div class="ok">담보 합계가 보장보험료와 일치합니다.</div>' : '<div class="warn">담보 합계 '+fmt(t)+'원이 보장보험료 '+fmt(prem)+'원과 '+fmt(Math.abs(t-prem))+'원 차이 납니다.</div>';
+    } else box.innerHTML='';
+  }
+  function fillMeta(){
+    ['org','agent','role','cxreason','pdesc','name','birth','phone','insurer','adate','pdate','product','term','prem','billed','notes'].forEach(function(f){
+      var el=$({cxreason:'m-cxreason',pdesc:'m-pdesc',org:'m-org',agent:'m-agent',role:'m-role',name:'m-name',birth:'m-birth',phone:'m-phone',insurer:'m-insurer',adate:'m-adate',pdate:'m-pdate',product:'m-product',term:'m-term',prem:'m-prem',billed:'m-billed',notes:'m-notes'}[f]);
+      if(el) el.value=S.meta[f]||'';
+    });
+  }
+  function buildAll(){fillMeta();buildContracts();buildCancel();buildItems();buildPlan();$('banner').hidden=!S.example}
+
+  /* ---------- 계산 ---------- */
+  function compute(){
+    var cur=0,paidSum=0,remSum=0,totSum=0,active=0;
+    S.contracts.forEach(function(c){
+      var fee=num(c.fee),p=num(c.paid),t=num(c.total);
+      if(!fee&&!c.co&&!c.name) return;
+      paidSum+=fee*p; remSum+=fee*Math.max(t-p,0); totSum+=fee*t;
+      if(t>0 && p<t) cur+=fee;
+    });
+    var nCon=S.contracts.filter(live).length;
+    var cx=S.contracts.filter(function(c){return c.cancel&&live(c)}),cxFee=0;
+    cx.forEach(function(c){var p=num(c.paid),t=num(c.total); if(t>0&&p<t) cxFee+=num(c.fee)});
+    var sub=cancelSub();
+    var before={충분:0,부족:0,미가입:0},after={충분:0,부족:0,미가입:0},rows=[];
+    S.items.forEach(function(it,i){
+      var std=num(it.std),b=num(it.before),a=num(it.add),x=Math.min(sub[i],b),f=b-x+a,e1=ev(std,b),e2=ev(std,f);
+      before[e1]++;after[e2]++;
+      rows.push({g:it.g,n:it.n,std:std,b:b,a:a,x:x,f:f,e1:e1,e2:e2,note:it.note,changed:a!==0||x!==0});
+    });
+    var billed=num(S.meta.billed)||num(S.meta.prem)||planTotal();
+    return {cur:cur,paid:paidSum,rem:remSum,tot:totSum,nCon:nCon,cx:cx,cxFee:cxFee,nAfter:nCon-cx.length+1,before:before,after:after,rows:rows,billed:billed,afterFee:cur-cxFee+billed};
+  }
+
+  /* ---------- 제안서 ---------- */
+  function bar(label,d){
+    var t=d.충분+d.부족+d.미가입; if(!t) t=1;
+    function seg(k,cls){return d[k]?'<span style="width:'+(d[k]/t*100)+'%;background:var(--bar-'+cls+')">'+d[k]+'</span>':''}
+    return '<div class="bar"><div>'+label+'</div><div class="t">'+seg('충분','ok')+seg('부족','warn')+seg('미가입','none')+'</div></div>';
+  }
+  function names(rows,key,st){var l=rows.filter(function(r){return r[key]===st}).map(function(r){return esc(r.n)});return l.length?l.join(', '):'없음'}
+  function renderDoc(forPdf){
+    var C=compute(), nm=(S.meta.name||'').trim(), who=nm?esc(nm)+' 고객님':'고객님';
+    var contact=[S.meta.birth?esc(S.meta.birth)+'생':'',S.meta.phone?esc(S.meta.phone):''].filter(Boolean).join('  ·  ');
+    var dates=[S.meta.adate?'분석 기준일 '+esc(S.meta.adate):'',S.meta.pdate?'제안일 '+esc(S.meta.pdate):''].filter(Boolean).join('  ·  ');
+    var changed=C.rows.filter(function(r){return r.changed});
+    var h='';
+    if(!forPdf){ h+='<div class="toolbar noprint"><span class="chip red"><i>●</i>변경되는 보장 '+changed.length+'개</span><span style="display:flex;gap:8px;flex-wrap:wrap">'+
+       '<button class="btn" type="button" id="btnCopy">요약 복사</button>'+
+       '<button class="btn pri" type="button" id="btnPdf">PDF 다운로드</button>'+
+       (inFrame?'':'<button class="btn" type="button" id="btnPrint">인쇄</button>')+'</span></div>';
+    h+='<div class="pdfnote noprint" id="pdfNote" aria-live="polite"></div>';
+    h+='<div id="copyArea" class="noprint" hidden></div>'; }
+    if(!forPdf) h+='<div class="dochead"><b>굿리치WM본부</b><span>보장분석 &amp; 보험 제안서</span></div>';
+    h+='<div class="cover"><small>INSURANCE COVERAGE REVIEW &amp; PROPOSAL</small><h2>'+who+'<br>보장분석 &amp; 보험 제안서</h2>'+(contact?'<p style="margin-bottom:6px;color:#fff;font-weight:600">'+contact+'</p>':'')+'<p>'+(dates||'현재 가입 현황 점검과 보장 보완 제안')+'</p><div class="agent">담당  '+esc(agentLine())+'</div></div>';
+
+    h+='<div class="sheet sec"><h3>핵심 요약</h3><p class="sub">변경 전은 기존 계약, 변경 후는 제안 상품을 추가한 경우입니다.</p><div class="kpis">'+
+      '<div class="kpi"><div class="k">보유 계약</div><div class="v">'+C.nCon+'건 → <em>'+C.nAfter+'건</em></div><div class="s">'+(C.cx.length?'기존 '+C.cx.length+'건 해지, 제안 상품 1건 추가':'기존 계약은 유지하고 제안 상품을 추가')+'</div></div>'+
+      '<div class="kpi"><div class="k">월 보험료 (납입 중인 계약 기준)</div><div class="v">'+fmt(C.cur)+'원 → <em>'+fmt(C.afterFee)+'원</em></div><div class="s">신규 '+fmt(C.billed)+'원 추가'+(C.cxFee?', 해지 '+fmt(C.cxFee)+'원 감소':'')+'</div></div>'+
+      '<div class="kpi"><div class="k">보장 ‘충분’ 항목 (37개 기준)</div><div class="v">'+C.before.충분+'개 → <em>'+C.after.충분+'개</em></div><div class="s">'+pct(C.before.충분,37)+' → '+pct(C.after.충분,37)+', 미가입 '+C.before.미가입+'개 → '+C.after.미가입+'개</div></div>'+
+      '</div></div>';
+
+    var tm=String(S.meta.term||''),yrs=(tm.match(/(\d+)년납/)||[])[1],mat=(tm.match(/(\d+세)\s*만기/)||[])[1];
+    h+='<div class="sheet sec"><h3>보험 제안</h3><p class="sub">기존 계약 '+C.nCon+'건'+(C.cx.length?' 중 '+C.cx.length+'건 해지':'')+', 제안 상품 1건 추가안입니다.</p><div class="scroll"><table class="view" style="min-width:760px"><thead><tr><th>No</th><th>보험사</th><th>상품</th><th>계약일</th><th>만기일</th><th>월 보험료</th><th>납입 현황</th><th>잔여 보험료</th></tr></thead><tbody>';
+    S.contracts.forEach(function(c,i){
+      if(!(c.co||c.name||num(c.fee))) return;
+      var fee=num(c.fee),p=num(c.paid),t=num(c.total);
+      h+='<tr'+(c.cancel?' class="off"':'')+'><td class="c">'+(i+1)+'</td><td class="c">'+esc(c.co)+'</td><td class="name"><span class="nm">'+esc(c.name)+'</span>'+(c.cancel?'<span class="xbadge">해지</span>':'')+'</td><td class="c">'+esc(c.start)+'</td><td class="c">'+esc(c.end)+'</td><td class="r">'+fmt(fee)+'원</td><td class="c">'+(t>0&&p>=t?'완납 ('+p+'/'+t+'회)':p+'/'+t+'회'+(t?' ('+Math.round(p/t*100)+'%)':''))+'</td><td class="r">'+fmt(fee*Math.max(t-p,0))+'원</td></tr>';
+    });
+    var nAdd=S.contracts.filter(live).length+1,months=yrs?(+yrs)*12:0;
+    h+='<tr class="add"><td class="c">'+nAdd+'</td><td class="c">'+esc(S.meta.insurer||'제안 보험사')+'</td><td class="name"><span class="nm">'+esc(S.meta.product||'제안 상품')+'</span><span class="abadge">추가</span></td><td class="c">'+esc(S.meta.pdate||'-')+'</td><td class="c">'+esc(mat?mat+' 만기':'-')+'</td><td class="r">'+fmt(C.billed)+'원</td><td class="c">'+(months?'신규 (0/'+months+'회)':'신규')+'</td><td class="r">'+(months?fmt(C.billed*months)+'원':'-')+'</td></tr>';
+    h+='<tr><td class="c"><b>합계</b></td><td colspan="4" class="name">현재 납입 중 월 보험료</td><td class="r"><b>'+fmt(C.cur)+'원</b></td><td class="c">'+pct(C.paid,C.tot)+'</td><td class="r"><b>'+fmt(C.rem)+'원</b></td></tr>';
+    h+='<tr><td></td><td colspan="4" class="name"><b>제안 후 월 보험료</b>'+(C.cxFee?' (해지 −'+fmt(C.cxFee)+'원)':'')+' (추가 +'+fmt(C.billed)+'원)</td><td class="r chg"><b>'+fmt(C.afterFee)+'원</b></td><td></td><td></td></tr>';
+    h+='</tbody></table></div><div class="kpis" style="margin-top:12px"><div class="kpi"><div class="k">총 보험료</div><div class="v">'+fmt(C.tot)+'원</div></div><div class="kpi"><div class="k">지금까지 납입</div><div class="v">'+fmt(C.paid)+'원</div></div><div class="kpi"><div class="k">앞으로 납입 예정</div><div class="v">'+fmt(C.rem)+'원</div></div></div></div>';
+
+    if(C.cx.length){
+      h+='<div class="sheet sec"><h3>해지 계약</h3><p class="sub">아래 계약을 해지하는 안입니다. 해지 계약의 보험료와 보장은 변경 후에서 뺐습니다.</p><div class="scroll"><table class="view" style="min-width:600px"><thead><tr><th>보험사</th><th>상품</th><th>월 보험료</th><th style="text-align:left">빠지는 보장(만원)</th></tr></thead><tbody>';
+      C.cx.forEach(function(c){
+        var parts=[]; if(c.per) c.per.forEach(function(v,k){ if(v) parts.push(esc(STD[k][1])+' '+fmt(v)) });
+        h+='<tr><td class="c">'+esc(c.co)+'</td><td class="name">'+esc(c.name)+'</td><td class="r">'+fmt(num(c.fee))+'원</td><td class="name">'+(c.per?(parts.join(', ')||'-'):'계약별 보장 정보 없음')+'</td></tr>';
+      });
+      h+='</tbody></table></div>'+(String(S.meta.cxreason||'').trim()?'<div class="memo"><b>해지 사유</b>'+esc(S.meta.cxreason.trim())+'</div>':'')+'</div>';
+    }
+    h+='<div class="sheet sec"><h3>보장분석 결과</h3><p class="sub">37개 항목 중 충분 '+C.before.충분+' · 부족 '+C.before.부족+' · 미가입 '+C.before.미가입+' ('+(C.before.부족+C.before.미가입)+'개 보장이 미흡합니다)</p>'+bar('변경 전',C.before)+
+      '<div class="legend"><span><b style="background:var(--bar-ok)"></b>충분</span><span><b style="background:var(--bar-warn)"></b>부족</span><span><b style="background:var(--bar-none)"></b>미가입</span></div>'+
+      '<div class="lists"><div class="lcard 미가입"><h4>미가입 '+C.before.미가입+'</h4><p>'+names(C.rows,'e1','미가입')+'</p></div><div class="lcard 부족"><h4>부족 '+C.before.부족+'</h4><p>'+names(C.rows,'e1','부족')+'</p></div><div class="lcard 충분"><h4>충분 '+C.before.충분+'</h4><p>'+names(C.rows,'e1','충분')+'</p></div></div></div>';
+
+    var plan=S.plan.filter(function(p){return p.g||p.d||num(p.fee)});
+    h+='<div class="sheet sec"><h3>제안 상품: '+esc((S.meta.insurer?S.meta.insurer+' ':'')+(S.meta.product||'상품명 미입력'))+'</h3><p class="sub">'+esc(S.meta.term||'')+'</p><div class="kpis" style="margin-bottom:14px"><div class="kpi"><div class="k">월 보험료</div><div class="v">'+fmt(C.billed)+'원</div>'+(num(S.meta.prem)&&num(S.meta.prem)!==C.billed?'<div class="s">보장보험료 '+fmt(num(S.meta.prem))+'원</div>':'')+'</div></div>'+
+      '<div class="scroll"><table class="view" style="min-width:560px"><thead><tr><th>구분</th><th>보장분석 항목 · 추가 가입금액(만원)</th><th>월 보험료</th></tr></thead><tbody>';
+    plan.forEach(function(p){h+='<tr><td class="name">'+esc(p.g)+'</td><td class="name">'+esc(p.d)+'</td><td class="r">'+fmt(num(p.fee))+'원</td></tr>'});
+    h+='<tr><td class="name"><b>합계</b></td><td></td><td class="r"><b>'+fmt(planTotal())+'원</b></td></tr></tbody></table></div>'+(String(S.meta.pdesc||'').trim()?'<div class="memo"><b>제안 상품 설명</b>'+esc(S.meta.pdesc.trim())+'</div>':'')+'</div>';
+
+    h+='<div class="sheet sec"><h3>변경 전·후 보장 비교</h3><p class="sub" style="margin-bottom:8px">단위: 만원. 제안'+(C.cx.length?'·해지':'')+'로 달라지는 항목은 변경 내용과 변경 후 금액을 빨간 글씨로 표시했고, 변경 후 아래에 변경 전 대비 증가(초록)·감소(파랑)를 적었습니다.</p><div class="scroll"><table class="view" style="min-width:760px"><thead><tr><th style="text-align:left">보장 항목</th><th>표준</th><th>변경 전</th><th>'+(C.cx.length?'변경 내용':'제안 추가')+'</th><th>변경 후</th><th>평가 전</th><th>평가 후</th></tr></thead><tbody>';
+    var last='';
+    C.rows.forEach(function(r){
+      if(r.g!==last){h+='<tr class="grp"><td colspan="7">'+esc(r.g)+'</td></tr>';last=r.g}
+      var cls=r.changed?' chg':'';
+      var ap=[]; if(r.x) ap.push('−'+fmt(r.x)+' 해지'); if(r.a) ap.push((r.a>0?'+':'')+fmt(r.a)+(r.note?' · '+esc(r.note):''));
+      var addTxt=ap.length?ap.join('<br>'):(r.note?esc(r.note):'-');
+      h+='<tr><td class="name">'+esc(r.n)+'</td><td class="r" style="color:var(--muted)">'+fmt(r.std)+'</td><td class="r">'+(r.b?fmt(r.b):'-')+'</td><td class="r'+cls+'">'+addTxt+'</td><td class="r'+cls+'">'+(r.f?fmt(r.f):'-')+(r.f!==r.b?'<div class="delta '+(r.f>r.b?'up">+':'dn">−')+fmt(Math.abs(r.f-r.b))+'</div>':'')+'</td><td class="c">'+pill(r.e1)+'</td><td class="c">'+pill(r.e2)+'</td></tr>';
+    });
+    h+='</tbody></table></div></div>';
+
+    h+='<div class="sheet sec"><h3>변경 전·후 보장 평가</h3><p class="sub">37개 보장 항목 기준 평가 변화입니다.</p>'+bar('변경 전',C.before)+bar('변경 후',C.after)+
+      '<div class="legend"><span><b style="background:var(--bar-ok)"></b>충분</span><span><b style="background:var(--bar-warn)"></b>부족</span><span><b style="background:var(--bar-none)"></b>미가입</span></div>'+
+      '<div class="lists"><div class="lcard 미가입"><h4>변경 후 미가입 '+C.after.미가입+'</h4><p>'+names(C.rows,'e2','미가입')+'</p></div><div class="lcard 부족"><h4>변경 후 부족 '+C.after.부족+'</h4><p>'+names(C.rows,'e2','부족')+'</p></div></div></div>';
+
+    var notes=String(S.meta.notes||'').split('\n').map(function(s){return s.trim()}).filter(Boolean);
+    h+='<div class="sheet sec"><h3>가입 전 확인해 주세요</h3><p class="sub">상품설명서와 약관을 반드시 확인하시기 바랍니다.</p><ul class="notes">'+notes.map(function(n){return '<li>'+esc(n)+'</li>'}).join('')+'</ul><div class="foot" style="margin-top:16px"><b>'+esc(agentLine())+'</b><span>'+(dates||'')+'</span></div></div>';
+    if(forPdf) return h;
+    h+='<div class="docnote"><b>안내사항</b> | '+esc(DISCLAIMER)+'</div>';
+    $('doc').innerHTML=h;
+    var bpdf=$('btnPdf'); if(bpdf) bpdf.addEventListener('click',function(){makePdf(bpdf)});
+    var bc=$('btnCopy'); if(bc) bc.addEventListener('click',function(){copySummary(C,who)});
+    var bp=$('btnPrint'); if(bp) bp.addEventListener('click',function(){try{window.print()}catch(e){}});
+  }
+  function summaryText(C,who){
+    var L=[];
+    L.push('['+who+' 보장분석 요약]');
+    L.push('월 보험료: '+fmt(C.cur)+'원 → '+fmt(C.afterFee)+'원 (신규 '+fmt(C.billed)+'원'+(C.cxFee?', 해지 -'+fmt(C.cxFee)+'원':'')+')');
+    if(C.cx.length) L.push('해지 계약: '+C.cx.map(function(c){return c.co+' '+c.name}).join(', '));
+    L.push('보장 충분 항목: '+C.before.충분+'개 → '+C.after.충분+'개 (37개 기준), 미가입 '+C.before.미가입+'개 → '+C.after.미가입+'개');
+    var ch=C.rows.filter(function(r){return r.changed});
+    if(ch.length){L.push('');L.push('변경되는 보장 (만원)');ch.forEach(function(r){L.push('- '+r.n+': '+fmt(r.b)+' → '+fmt(r.f)+' ('+r.e1+' → '+r.e2+')')})}
+    L.push('');L.push(agentLine());
+    return L.join('\n');
+  }
+  function copySummary(C,who){
+    var t=summaryText(C,who), box=$('copyArea');
+    function show(){box.hidden=false;box.innerHTML='<textarea class="copybox" id="copyText" readonly></textarea>';var ta=$('copyText');ta.value=t;ta.focus();ta.select()}
+    try{
+      navigator.clipboard.writeText(t).then(function(){
+        var b=$('btnCopy'); if(b){b.textContent='복사했습니다'; setTimeout(function(){b.textContent='요약 복사'},1800)}
+      },show);
+    }catch(e){show()}
+  }
+
+  /* ---------- 이벤트 ---------- */
+  document.addEventListener('input',function(e){
+    var el=e.target, s=el.getAttribute&&el.getAttribute('data-s'); if(!s) return;
+    var f=el.getAttribute('data-f'), i=el.getAttribute('data-i');
+    if(s==='meta'){
+      if(f==='birth'){var d=el.value.replace(/\D/g,'').slice(0,8);el.value=d.length>6?d.slice(0,4)+'.'+d.slice(4,6)+'.'+d.slice(6):d.length>4?d.slice(0,4)+'.'+d.slice(4):d}
+      if(f==='phone'){var p=el.value.replace(/\D/g,'').slice(0,11);el.value=p.length>7?(p.length>10?p.slice(0,3)+'-'+p.slice(3,7)+'-'+p.slice(7):p.slice(0,3)+'-'+p.slice(3,6)+'-'+p.slice(6)):p.length>3?p.slice(0,3)+'-'+p.slice(3):p}
+      S.meta[f]=el.value;
+      if(f==='org'||f==='agent'||f==='role'){ saveAgent(); return; }
+    }
+    else if(s==='contract') S.contracts[+i][f]=el.value;
+    else if(s==='item') S.items[+i][f]=el.value;
+    else if(s==='plan') S.plan[+i][f]=el.value;
+    if(S.example){S.example=false;$('banner').hidden=true}
+    if(s==='contract'){ calcContracts(); if(f==='co'||f==='name'||f==='fee') buildCancel(); }
+    if(s==='item') calcItems();
+    if(s==='plan'||(s==='meta'&&(f==='prem'))) calcPlan();
+  });
+  document.addEventListener('click',function(e){
+    var cxb=e.target.closest&&e.target.closest('[data-cancel]');
+    if(cxb){ var ci=+cxb.getAttribute('data-cancel'); S.contracts[ci].cancel=!S.contracts[ci].cancel; if(S.example){S.example=false;$('banner').hidden=true} buildCancel(); calcItems(); var nb=document.querySelector('[data-cancel="'+ci+'"]'); if(nb) nb.focus(); return; }
+    var d=e.target.closest&&e.target.closest('[data-del]'); if(!d) return;
+    var k=d.getAttribute('data-del'), i=+d.getAttribute('data-i');
+    if(k==='contract'){S.contracts.splice(i,1); if(!S.contracts.length) S.contracts.push({co:'',name:'',start:'',end:'',fee:'',paid:'',total:''}); buildContracts(); buildCancel(); calcItems()}
+    if(k==='plan'){S.plan.splice(i,1); if(!S.plan.length) S.plan.push({g:'',d:'',fee:''}); buildPlan()}
+  });
+  $('addContract').addEventListener('click',function(){S.contracts.push({co:'',name:'',start:'',end:'',fee:'',paid:'',total:''});buildContracts();buildCancel()});
+  $('addPlan').addEventListener('click',function(){S.plan.push({g:'',d:'',fee:''});buildPlan()});
+  $('btnClear').addEventListener('click',function(){S=blank();buildAll()});
+  $('btnSample').addEventListener('click',function(){S=sample();buildAll()});
+
+  var tabs=['tab1','tab2','tab3','tab4'];
+  function show(n){
+    tabs.forEach(function(id,k){
+      var on=(k+1)===n; $(id).setAttribute('aria-selected',on?'true':'false'); $('p'+(k+1)).hidden=!on;
+    });
+    if(n===4) renderDoc();
+    window.scrollTo(0,0);
+  }
+  tabs.forEach(function(id,k){$(id).addEventListener('click',function(){show(k+1)})});
+  document.querySelector('[role=tablist]').addEventListener('keydown',function(e){
+    var cur=tabs.findIndex(function(id){return $(id).getAttribute('aria-selected')==='true'});
+    if(e.key==='ArrowRight'&&cur<3){show(cur+2);$(tabs[cur+1]).focus()}
+    if(e.key==='ArrowLeft'&&cur>0){show(cur);$(tabs[cur-1]).focus()}
+  });
+
+  /* ---------- 라이브러리 지연 로드 ---------- */
+  var LIB={pdf:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',worker:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',cmap:'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+    h2c:'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',jspdf:'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'};
+  var loaded={};
+  function loadScript(u){
+    if(!loaded[u]) loaded[u]=new Promise(function(ok,no){var s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=function(){delete loaded[u];no(new Error('라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.'))};document.head.appendChild(s)});
+    return loaded[u];
+  }
+  /* 한글 글꼴이 PDF에 들어 있지 않은 문서(보장분석지)는 글자 표(CMap)가 필요하다. 자주 쓰는 것은 내장하고 나머지만 네트워크에서 가져온다 */
+  var CM_EMBED={"UniKS-UCS2-H": "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XgXJIgCIXwLJKACIYALJKwCIYRLJLgGIYgHJQQCIZAHJQwGIZQDJRQCIZwTJRgGIaADJSwOIagHJTAOIbgLJTgCIcgLJUQCIcwbJVAGIdADJWwKIdgXJXAKIeQDJYgCIfAHJYwGIfQbJZQGIfwDJbAKJAQLJbQCJBAHJcACJBQLJcgCJBgLJdQCJBwfJeACJCADKAACJCQfKAQGJCgHKCQCJDAHKCwGJDQDKDQCJDwDKDgCJEAHKDwKJEQDKEQCJFADKEgGJFQTKEwGJFwHKGACJGQLKGgCJGgDKHQCJGwTKHgGJHADKIwCJHgDKJACJHwXKJQCJIALKKwCJIQLKLgCJIgfKMQCJIwHKOQGJJAXKOwGJJgHKQQCJKALKQwCJKQbKRgGJKgDKTQCJLADKTgCJLQXKTwCJLgLKVQCJLwLKWACJMAfKWwCJMQDKYwCJMgfKZAGJMwHKbACJNQHKbgOJNgPKcAKJOgDKdACJPQDKdQGJPgTKdgGJQAHKewCJQgLKfQCJQwrLAAGJRAXLCwCJRhHLEQCJRwfLIwGJSAHLKwCJSgLLLQCJSwbLMAGJTADLNwCJTgfLOACJTwLLQACJUALLQwCJURLLRgGJUgHLWQCJVAHLWwCJVQGJVgXLXQGJWADLYwCJWgDLZACJWwXLZQCJXBrLawGJXQHMBgCJXwHMCAGJYADMCgCJYgTMCwGJYwDMEACJZQDMEQGJZgLMEgCJaADMFQKJaQDMFgCJbALMFwCJbQDMGgCJbgTMGwGJbwDMIAKJcQLMIQCJdAHMJAGJdQHMJgCJdwLMKACJeAbMKwGJeQDMMgKJewXMMwGJfgXMOQCKAC7MPwKKAQDMbgCKBALMbwCKBQbMcgGKBgDMeQKKCAXMegGKCwHNAACKDQrNAgCKDgHNDQCKDwDNDwCKEAXNEACKEQLNFgCKEgLNGQCKEwLNHAbNHwGKFAPNJgCKFgHNKgCKFxrNLAGKGAHNRwCKGgDNSQCKGwDNSgCKHAbNSwGKHQDNUgCKHwDNUwKKIAPNVAGKIwXNWACKJQrNXgGKJgXNaQGKKBLNbwCKKgXOAgCKKwLOCACKLALOCwCKLQbODgGKLgLOFQCKMAXOGACKMRrOHgGKMgHOOQCKNALOOwCKNQXOPgKKNgDORACKOQDORQGKOgTORgCKPAbOSwCKPQrOUgGKPgXOXQGKQAHOYwCKQgLOZQCKQwbOaAGKRAHObwCKRgbOcQCKRwLOeACKSALOewCKSQbOfgGKSgnPBQCKTBrPDwGKTQHPKgCKTwDPLACKUADPLQCKUQDPLgCKUgPPLwKKUwDPMwCKVgDPNACKVwLPNQCKWB3POAGKWQHPVgCKWwLPWACKXAbPWwGKXQDPYgCKXwDPYwCKYAXPZAKKYQDPagCKZAHPawOKZQTPbQGKaQDPcgSKawDPcwCKcADPdAKKcQHPdQCKdALPdwCKdQbPegGKdgDQAQKKeAXQAgGKewHQCACKfQLQCgCKfgbQDQCKfwPQFACLABnQGAfQMgGLAQDQOgGLAwLQOwCLBQDQPgGLBgPQPwGLCADQQwKLCgTQRAKLDQHQSQCLEALQSwCLEQbQTgGLEgDQVQKLFAXQVgGLFwHQXACLGQLQXgCLGgbQYQGLGwHQaAGLHQHQagCLHwLQbACLIALQbwCLIRbQcgGLIgHRCQCLJALRCwCLJQDRDgCLJgTRDwGLJwDRFACLKQDRFQCLKgPRFgKLKwLRGgCLLgLRHQCLLwrRIACLMCLRKwCLMQLRTgCLMgLRUQCLMwbRVAGLNADRWwCLNgfRXAGLNwHRZACLOQLRZgCLOgfRaQCLOwDRcQCLPADRcgCLPQHRcwPRdQGLPgHReQCLQAHRewGLQQbRfQGLQwDSBACLRQDSBQCLRgXSBgCLRxLSDACLSAbSHwCLSRrSJgCLSgLSQQCLSwLSRACLTAbSRwGLTQnSTgGLTwXSWACLUQbSXgGLUgLSZQCLVAXSaAGLVQHSbgCLVwLScAKLWATScwGLWwDSeACLXQDSeQGLXgLSegCLYADSfQCLYQLSfgCLYgLTAQCLYxLTBAGLZAHTFwCLZgLTGQCLZwDTHACLaATTHQGLaQDTIgCLawDTIwCLbAPTJACLbQDTKAKLbgDTKQCLcQHTKgSLcgLTLAKLdwDTLwSLegLTMACLfwGMAAHTMwCMAgLTNQCMAwbTOAGMBADTPwKMBgXTQACMCTbTRgKMCgDTfQCMDQHTfgGMDgDUAAGMEAPUAQGMEgDUBQCMFADUBgCMFQDUBwCMFgHUCACMFwDUCgGMGAHUCwCMGgLUDQCMGwbUEAGMHADUFwKMHgXUGACMIQLUHgCMIgLUIQCMIwrUJAGMJAXULwCMJgLUNQCMJxbUOAGMKAHU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MQXqFwSRMgHqHQGRNwDqHwGROQPqIAGROwDqJAKRPQPqJQCRQADqKQGRQQHqKgCRQwLqLACRRAbqLwGRRQDqNgKRRwXqNwGRSgHqPQCRTALqPwCRTQbqQgGRTgDqSQKRUAXqSgCRUwLqUACRVALqUwCRVQvqVgCRVgXqYgKRVwDqaACRWgLqaQCRWwDqbACRXATqbQGRXQDqcgCRXwDqcwCRYALqdACRYQHqdwGRYgHqeQCRZALqewCRZQvqfgCRZgXrCgCRZwLrEACRaALrEwCRaQbrFgCRagHrHQGRawbrHwCRbQLrJgCRbgLrKQCRbwbrLAGRcADrMwCRcgfrNAGRcwHrPACRdQLrPgCRdgbrQQGRdwDrSACReQDrSQCRegXrSgGRewHrUACRfQHrUgGRfgbrVAGSAADrWwCSAgDrXACSAwDrXQCSBADrXgGSBQDrXwCSBxLrYACSCAbrcwGSCQHregCSCwLrfACSDAbrfwCSDQPsBgCSDgXsCgGSDwHsEACSEQLsEgCSEgbsFQGSEwDsHACSFQDsHQCSFgXsHgGSFwXsJACSGQbsKgCSGgHsMQCSGwDsMwCSHAXsNAGSHQHsOgCSHwLsPAGSIAXsPwGSIgDsRQCSJADsRgCSJSHsRwGSJgHsaQCSKAHsawGSKQXsbQKSKwDscwCSLgDsdACSLwPsdQCSMADseQGSMQDsegGSMwLsewCSNQbsfgGSNgHtBQGSOATtBwKSOgHtDACSPQLtDgCSPgbtEQGSPwHtGAGSQRrtGgCSQyHtNQGSRAHtVwCSRgLtWQCSRwDtXACSSATtXQGSSQHtYgGSSwXtZACSTQLtagCSTgLtbQCSTzLtcACSUBbuIwGSUQHuOgCSUwHuPAGSVADuPgCSVgTuPwGSVwLuRACSWQXuRwGSWgHuTQCSXAbuTwfuVgCSXQbuXgCSXhLuZQCSXwbueACSYALufwCSYQLvAgCSYgbvBQGSYwnvDACSZRrvFgGSZgHvMQCSaALvMwCSaQbvNgGSagLvPQCSbAXvQACSbRLvRgCSbgbvWQCSbxrvYACScALvewCScSvvfgCScgXwKgGScwHwMACSdQLwMgCSdgDwNQCSdwPwNgCSeAGSeQnwOgCSewLwRACSfALwRwCSfQbwSgCSfgrwUQGSfwHwXACTAQLwXgCTAgbwYQGTAwDwaACTBQDwaQCTBgXwagGTBwHwcAKTCQDwcgKTDAPwcwKTDwDwdwKTEgLweAGTFQDwewGTFwHwfACTGQLwfgCTGgbxAQGTGwDxCAKTHQXxCQGTIAHxDwCTIgLxEQCTIwHxFACTJAPxFgGTJQDxGgCTJwDxGwCTKALxHACTKQDxHwGTKgLxIACTLALxIwCTLQfxJgCTLgnxLgGTLwHxOAGTMQDxOgOTMwTxOwaTNwDxQACTPgDxQQCTPwDxQgGTQAHxQwCTQgLxRQCTQwbxSAGTRADxTwCTRgDxUACTRwXxUQKTSADxVwCTSwLxWACTTADxWwGTTQPxXAOTTwGTUwLxYAOTVQLxYwCTWQLxZgCTWgbxaQGTWwDxcAGTXQbxcQGTXwHxeACTYQLxegKTYgDxfQCTZQHxfgKTZgDyAACTaQDyAQCTagDyAgCTawPyAwGTbAHyBwCTbgLyCQCTbwbyDAGTcADyEwKTcgXyFAGTdQHyGgCTdwryHACTeAHyJwCTeQDyKQCTegXyKgGTewHyMACTfQLyMgCTfgbyNQGTfwDyPACUAQDyPQCUAgXyPgGUAwHyRACUBQLyRgCUBgbySQGUBwDyUACUCQDyUQCUCgXyUgGUCwHyWACUDQLyWgKUDgTyXQGUEQDyYgCUEwDyYwCUFAXyZAGUFQHyagCUFwLybACUGAbybwGUGQHydgGUGwXyeAGUHQHyfgCUHwLzAACUIAbzAwGUIQLzCgCUIwHzDQPzDwGUJAHzEwCUJgLzFQCUJwbzGAGUKADzHwCUKgDzIACUKwXzIQGULAHzJwCULgLzKQCULwbzLAGUMADzMwCUMgDzNACUMwDzNQCUNAPzNgGUNQHzOgCUNwLzPACUOATzPwCUOQDzRAGUOgDzRQCUPADzRgeUPQLzRwCURQLzSgCURgbzTQCURwHzVACUSAfzVgGUSQHzXgCUSwLzYAKUTAPzYwKUTwDzZwOUUgLzaACUVgDzawGUVwHzbACUWQDzbgKUWgDzbwCUXQTzcAGUXgDzdQOUYATzdgGUZAHzewCUZgLzfQCUZwb0AAGUaAD0BwKUagX0CAGUbQH0DgCUbwD0EACUcAD0EQCUcQb0EgCUcgP0GQCUcwX0HQCUdAL0IwCUdQL0JgCUdhL0KQGUdwH0PACUeQL0PgCUegD0QQCUewT0QgGUfAD0RwCUfgD0SAGUfwT0SQGVAQH0TgCVAwL0UACVBAb0UwGVBQD0WgCVBwD0WwCVCAX0XACVCQL0YgCVCgL0ZQCVCwb0aAGVDAH0bwGVDgX0cQCVEBr0dwGVEQH1EgCVEwL1FACVFAD1FwCVFQT1GAGVFgD1HQCVGAD1HgKVGQL1HwKVHAX1IgCVHwf1KACVIAD1MACVIQD1MQCVIgX1MgCVIxL1OAGVJAX1SwCVJgL1UQCVJwL1VACVKAb1VwGVKQD1XgCVKwD1XwCVLAX1YAGVLQH1ZgCVLw/1aACVMAX1eAGVMQH1fgCVMwL2AAKVNAT2AwGVNwD2CACVOQD2CQCVOgX2CgCVOxL2EACVPAb2IwCVPRr2KgGVPgH2RQCVQAL2RwCVQQb2SgGVQgD2UQCVRAf2UgCVRQL2WgCVRgL2XQCVRwb2YACVSAr2ZwGVSQH2cgCVSwL2dACVTAb2dwGVTQD2fgCVTwD2fwCVUCH3AAGVUQH3IgCVUwH3JAGVVAD3JgCVVgT3JwGVVwD3LACVWQD3LQGVWgH3LgGVXAD3MAGVXgH3MQCVYAD3MwCVYQD3NACVYgH3NQCVYwP3NwGVZAD3OwKVZgX3PAGVaQH3QgCVawL3RACVbAb3RwGVbQD3TgKVbwX3TwCVcgL3VQCVcw/3WACVdCH3aAGVdQH4CgCVdwL4DACVeAb4DwGVeQD4FgKVewX4FwCVfhP4HQCVfwX4MQCWABL4NwCWASL4SgGWAgH4bQCWBAL4bwCWBQb4cgGWBgD4eQCWCAD4egCWCQD4ewCWCgP4fAGWCwX5AACWDQr5BgCWDgb5EQCWDwr5GAf5IwCWEAb5KwCWEQL5MgCWEgL5NQCWEwb5OAGWFB75PwCWFgX5XgGWFwH5ZACWGQL5ZgCWGgb5aQGWGwL5cACWHQX5cwCWHhL5eQGWHyH6DACWIRr6LgCWIhr6SQCWIw76ZACWJAH6cwCWJQD6dQCWJhX6dgv7DAGWJwH7GACWKQL7GgCWKgb7HQGWKwL7JAGWLQP7JwKWLwH7KwCWMgD7LQCWMwD7LgCWNAb7LwGWNQD7NgOWNwT7NwGWOwH7PACWPQL7PgCWPgb7QQGWPwD7SAKWQQX7SQCWRAL7TwCWRQD7UgCWRgD7UwCWRwb7VACWSAP7WwCWSSH7XwGWSgH8AQCWTAL8AwCWTQb8BgGWTgD8DQKWUAX8DgGWUwH8FACWVQL8FgCWVgb8GQGWVwD8IACWWQD8IQCWWgX8IgCWWwL8KACWXA78KwCWXQb8OgCWXgL8QQCWXw78RAD8UwCWYAX8VAGWYQH8WgCWYwL8XACWZAb8XwGWZQD8ZgCWZwD8ZwCWaAX8aACWaQL8bgCWagL8cQCWawv8dACWbCH9AACWbQL9IgCWbgL9JQCWbwb9KAGWcAD9LwCWcgD9MACWcwX9MQCWdA79NwCWdQr9RgGWdgH9UQCWeAL9UwCWeQb9VgGWegD9XQCWfAD9XgCWfQX9XwCWfhL9ZQCWfwb9eACXAAL9fwCXARb+AgCXAgL+GQCXAwL+HACXBAb+HwGXBQD+JgCXBwD+JwCXCAH+KAP+KgCXCQL+LgCXCgL+MQCXCwb+NACXDAP+OwCXDQX+PwGXDgH+RQCXEAL+RwCXEQb+SgGXEgD+UQCXFAD+UgCXFSH+UwGXFgH+dQCXGAH+dwKXGQX+eQGXHAD+fwCXHgD/AACXHwX/AQGXIAH/BwCXIgL/CQCXIwb/DAGXJAD/EwCXJgD/FACXJwX/FQGXKAH/GwCXKgL/HQCXKwb/IAGXLAD/JwKXLgX/KAGXMRL/LgCXMyH/QQGXNAH/YwCXNgH/ZQGXNwb/ZwGXOQD/bgKXOwX/bwGXPgH/dQCXQAL/dwCXQQb/egGXQgCBgAEAl0QAgYACAJdFBYGAAwCXRgKBgAkAl0cCgYAMAJdIBoGADwGXSQCBgBYCl0sFgYAXAJdOGoGAHQGXTwGBgDgAl1ECgYA6AJdSBoGAPQGXUwCBgEQAl1UAgYBFAJdWBYGARgGXVwGBgEwAl1kCgYBOAJdaBoGAUQCXWwOBgFgAl1wFgYBcAJddE4GAYgCXXgWBgHYAl18GgYB8AJdgEoGBAwCXYRqBgRYBl2IBgYExAJdkAoGBMwCXZQaBgTYBl2YAgYE9AJdoAIGBPgCXaQWBgT8Al2oCgYFFAJdrAoGBSACXbAuBgUsAl20FgYFXAJduE4GBXQCXbwWBgXEBl3ABgYF3AJdyAoGBeQCXcwaBgXwBl3QAgYIDAJd2AIGCBACXdwWBggUAl3gCgYILAJd5AoGCDgCXegaBghEAl3sKgYIYAZd8AYGCIwCXfgKBgiUAl38GgYIoAZgAAoGCLwCYAiGBgjIBmAMBgYJUAJgFAoGCVgCYBgaBglkBmAcAgYJgAJgJAIGCYQCYCgWBgmIBmAsBgYJoAJgNAoGCagGYDgWBgm0BmBAAgYJzApgSBYGCdAGYFQGBgnoAmBcCgYJ8AJgYBoGCfwGYGQCBgwYCmBsFgYMHAJgeBoGDDQyBgxQAmB8hgYMhAZggAYGDQwCYIgKBg0UAmCMAgYNIAJgkBIGDSQGYJQCBg04CmCcFgYNPAZgqAYGDVQCYLAKBg1cAmC0GgYNaAZguAIGDYQCYMACBg2IAmDEFgYNjAJgyAoGDaQCYMw6Bg2wAmDQGgYN7AJg1AoGEAgCYNhaBhAUBmDcBgYQcAJg5AoGEHgCYOgaBhCEBmDsAgYQoAJg9AIGEKQCYPgOBhCoAmD8AgYQuAJhAAoGELwCYQRaBhDIAmEIagYRJAJhDAoGEZACYRAaBhGcGgYRuAJhFAIGEdQCYRgWBhHYAmEcagYR8AZhIAYGFFwCYSgKBhRkAmEsGgYUcAZhMAIGFIwCYTgCBhSQAmE8FgYUlAJhQEoGFKwCYUQaBhT4AmFIagYVFAZhTAYGFYACYVQKBhWIAmFYGgYVlAZhXAoGFbACYWQWBhW8AmFoCgYV1AJhbAoGFeACYXAaBhXsAmF0DgYYCAJheBYGGBgGYXwGBhgwAmGEBgYYOAZhiAIGGEACYZASBhhEBmGUAgYYWAJhnB4GGFwCYaAKBhh8AmGkCgYYiAJhqBoGGJQGYawmBhiwBmG0BgYY2AJhvAoGGOACYcAaBhjsBmHEAgYZCAJhzAIGGQwCYdAWBhkQCmHUAgYZKAJh4AoGGSwCYeQCBhk4AmHoEgYZPAZh7AIGGVAKYfQKBhlUAmQABgYZYAZkBAYGGWgCZAwKBhlwAmQQGgYZfAZkFAIGGZgKZBwWBhmcBmQo1gYZtAZkMAYGHIwCZDgKBhyUAmQ8GgYcoAZkQAIGHLwKZEgWBhzABmRUBgYc2AJkXAoGHOACZGAaBhzsBmRkAgYdCAJkbAIGHQwCZHAWBh0QAmR0CgYdKAJkeAoGHTQCZHwaBh1ABmSABgYdXAZkiBYGHWQCZJAaBh18AmSUHgYdmAJkmAIGHbgCZJweBh28BmSgBgYd3AJkqAoGHeQCZKwaBh3wBmSwAgYgDAJkuAIGIBACZLwWBiAUAmTATgYgLAJkxIYGIHwCZMgKBiEEAmTMWgYhEAJk0AoGIWwCZNQKBiF4AmTYHgYhhAJk3AIGIaQCZOAeBiGoBmTkBgYhyAJk7AYGIdAGZPACBiHYAmT4EgYh3AZk/AIGIfACZQQCBiH0AmUIFgYh+AJlDE4GJBACZRCGBiRgAmUUCgYk6AJlGAoGJPQCZRwaBiUAAmUgBgYlHAJlJB4GJSQCZSgKBiVEAmUsCgYlUAJlMBoGJVwCZTQGBiV4AmU4AgYlgAJlPAYGJYQOBiWMAmVACgYlnAJlRAoGJagCZUgaBiW0BmVMAgYl0AJlVI4GJdQGZVgGBihkAmVgCgYobAJlZBoGKHgGZWgCBiiUAmVwAgYomAJldBYGKJwGZXgGBii0AmWACgYovAJlhA4GKMgCZYgGBijYBmWMAgYo4AJllAIGKOQCZZgWBijoBmWcBgYpAAJlpAoGKQgCZagaBikUBmWsAgYpMApltBYGKTQCZcBOBilMAmXEhgYpnAZlyAYGLCQCZdAKBiwsAmXUAgYsOAJl2BIGLDwGZdwCBixQAmXkAgYsVAJl6BYGLFgGZewGBixwAmX0CgYseAJl+BoGLIQGZfwCBiygAmgEAgYspAJoCBYGLKgGaAwGBizAAmgUCgYsyAJoGBoGLNQGaBwCBizwCmgkFgYs9AJoMAoGLQwCaDQKBi0YAmg4HgYtJAJoPCYGLUQGaEAGBi1sAmhICgYtdAJoTA4GLYACaFAGBi2QBmhUAgYtmAJoXAIGLZwCaGAKBi2gAmhkBgYtrAZoaAYGLbQCaHAKBi28Amh0JgYtyAJoeAIGLfACaHwWBi30BmiABgYwDAJoiDYGMBQCaIwCBjBMAmiQFgYwUAZolAYGMGgCaJwKBjBwAmigHgYwfAJopAIGMJwCaKgCBjCgAmisFgYwpAJosAoGMLwCaLQKBjDIAmi4HgYw1AJovAIGMPQCaMAeBjD4BmjEBgYxGAJozAoGMSACaNAOBjEsAmjUBgYxPAJo2AYGMUQCaNwCBjFMAmjgFgYxUAJo5AoGMWgCaOgKBjF0AmjsGgYxgAJo8A4GMZwCaPQWBjGsBmj4BgYxxAJpAAoGMcwCaQQuBjHYAmkIFgY0CAZpDAYGNCACaRQKBjQoAmkYGgY0NAZpHAIGNFACaSQCBjRUAmkoFgY0WAZpLAYGNHACaTQKBjR4Amk4GgY0hAJpPAYGNKACaUACBjSoAmlEFgY0rAZpSAYGNMQCaVACBjTMDmlUFgY00AZpZAIGNOgCaWwCBjTsAmlwCgY08AJpdAYGNPwCaXgKBjUEAml8CgY1EAJpgBoGNRwGaYQKBjU4AmmMFgY1RAZpkAYGNVwCaZgKBjVkAmmcGgY1cAZpoAIGNYwCaagCBjWQAmmsFgY1lUQ35AKAUhm20XLgTxS7ABYFGVgGDXYZMg2SDNXEa+Q0GohcArSgCoh4FoiICoioAoi8AojMBojYGojkBokMAokgAox8BoyEFoyUCoywFozACozcBoz0Co0EAo0YAo1QDo1YBo1sAo2ADo3wDpAFRG/laoV6CbZl+mXtoMwiVRo1Ok3ODS6hGpg86pwKfT4Mzmmaac4F0iAaIO4IfmjaFUJo5gwZxT/l1AqJJAqJNAqJTAKJXAaJaAKA/AKJcAKJfAaJhAKJlBaJnAKJvAKBAAaJxAKBBAqJ0AKBCAaJ3AKJ6AKJ5AaJ7AaJ+ALIvAaMBAKpUAKMDAKBDAKBGAKMFAqMHAKMLAKBHAqMNALxnAKMRAKMTA6MVAKMaAqMcAK0lAqNHAKBUAKNLAK0oAaNMAaNQAKNTAL40AK9rAKNhAKBXAKNjAaNlAKNoAKNqAKNsAKBYA6NuAqNzA6N3AKswAKN7AKQGAKQIAKQKAK4+AaQMAKBbAKQRAKQTAKQVAqQYAKQcAaBcAKQeAqQgBKQkAKQqAqQtURL5+qlnkWyLd06YWaNogw6lS6xWrRkkgRKyPqZpqHjAb4EqglRhCf8BOoIIAABwACCCRAAAcYEBAYEPAACBQgAAgmUBAIERAACCQw==", "Adobe-Korea1-UCS2": "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mHagaoKuKY5coDiCHIMuYoVEkVyCOI4wjSKGfoMCi3Krfo0mhWqOPo8miDaB6QOBg1zfObsogaYwgfwthi6TLKdUeIUGhyqTWnCRaLlwwwCjLoKqPYFSjgCBZlqFGHahcoUYnmCoUIls8E6B9FUulWCBUuBqghSBVs5okUSBjhf8PoHAA8M4qwrLTIHDUYke2E6xUYFGkGCKNKp65lKQVr5Agr5b1FCyIJI0xACBmAeBq1LKUoKyY4JchCLoWs8C9zCB4nmUGpVolHiBhyWhaoGCGrQc+204ENwdsG6zGMouiGSBxGWEDo56gxyBQow8hDiMBI4YA4IwkFiCDqpkgRYfc3KnAJt+AIEwAJZiAKp6AoOpFwD9cQD9TgCIHgCBiw8MgcJoAIHEJQIUAAIGWAACAAJigYN8AP8BAEUAgYp+AASDBCAPACgAKACIgAAAiIADAIiAAIEbIB8AWwACAoGXQAADAJg5AAEDh2oCh3EACQL9CQCBhQwBgYVbAIGFQgCBhysCgYhCAoGHSwACBIGICACBdQD5SwCOBQeCt0IClHoCgsw1AgQBgYdYAIGHW4MFIFrNzc3NAoal0ck0AIiAAACIgAMAiIAAkwkgaQAxIN6H/36H/36H/36H/36H/36H/36H/36H/36XCyByAFsAMQAwAF2H/36H/36H/36H/36H/36H/36H/36H/36H/36f/7f/foEDIH0AtgKBiHAAgnGTCSCCADEg3of/fof/fof/fof/fof/fof/fof/fof/fpcLIIsAWwAxADAAXYf/fof/fof/fof/fof/fof/fof/fof/fof/fp//t/9+lRogqgAoAEEAKYf/fof/fof/fof/fof/fof/fof/fof/fof/fof/fof/fof/fof/fof/fof/fof/fof/fof/fof/fof/fof/fof/fof/fof/fof/fpMJIN4AMSDeh/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+lwsg5wBbADEAMABdh/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+n/+3/36TCSDyADEg3of/fof/fof/fof/fof/fof/fof/fof/fpcLIPsAWwAxADAAXYf/fof/fof/fof/fof/fof/fof/fof/fof/fp//t/9+gQshGyLPAgMHgQkBAAIlBoExAEYABQAIAYE2AAyTCiE6ADAg3of/fof/fof/fof/fof/fof/fof/fof/fof/fpM0IU4AQQAph/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+t/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+gQUhggAhAIIcAIITAAsAgYAihwQhhwAoADIANwApAIf/fgCH/34An/+3/36BASGNICCDAiGOICAgIACIgACFASGQICAgICAggQkhkQCnAIIJAAwAAQKBgC4AgYAxAoGALgCBgDEC/26DAyGgJaAg3wCCt/9+AYKwgAGBAiGoJhwAAoMFIawlxyDeAYKwgAEAgqf/fgSBmIADAIiAAYEJIbYnGgAJAYRPBUcVlEcClgoBAQABA6dghwYh9QAoADIAMQApAIf/fgCH/34Ah/9+AIf/fgCH/36BECH7JkIAjjMAthgAqVcADgBlAIo/AYpUAAEDMgKPAwCCcACBPASDFwAFAn2DASIaAPcg3YEIIhsjFAKCZQGNHAGOHwBaAIGFcQCBiWIAgk+DASInIqUDOJEJIisihQOBdwSCXIGKS4GJBoJWgYtFgQIiOTKeAclFgwIiPAAhAD8Bge//fpETIj8ixIwEjAeMAjcVEheBCjc0LyUVBhKFSIUvX4EFIlMlygCxTAAOAIYiAL0RlwoiXAAoADIAMQAph/9+h/9+h/9+h/9+h/9+h/9+h/9+h/9+n/+3/36BGiJmIZICAAR4AAMABQAMB5Z+Cw4LOgSXUwACAZcUAwECl1MACQEEAAkABApkAAIAAwACAFsABgQBAAmTgRAiwgBBAC6H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/363/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36H/36HnK79IYK7+IABguC3/36B57iAAfiogAGEsaf/foOJqIABgaif/37n/37fyIABgeP4gAGBptf/fqLggAGBt7//foGS//9+hMuAgAGDluf/fp/X/36Cg+iAAYy82IABhuzX/36HvOf/fozOyIABgff4gAGFm5//foXHiIABiZTP/36I1cCAAZO//36Erof/foSyiIABhtD3/36Em4CAAYLL6IABgcH//36GmZ//foaLkIABgf6wgAGD8Kf/foK0gIABgZCYgAGFl5f/foOB2IABgo/ggAGChe//foLDiIABg+a//36B3eCAAY2Q7/9+gdPAgAGBhJiAAYLgt/9+gpyIgAGF0ICAAYSxp/9+g4nn/36V9/9+jMf/foHV9/9+gfbggAGm3/98go/AgAGk3/9+pN//fsm//37Jv/9+pN//fsm//36k3/9+pN//fqTf/36El9CAAY6ggAGBnbf/fviogAGEsaf/foOJqIABgaif/37n/37fyIABgeP4gAGBptf/foKbwIABgfjf/37Xp/9+3tf/foGogIABgYin/362oIAB0Lf/foOigIABi7aAgAGHBiNXACgAMgAxACkAh/9+AIf/fgCH/34Ah/9+AIf/fpMbI13IcCDdg7CYgAGV6IABi4qAgAGGz5f/foSTwIABiNSn/37op/9+gZzX/37Ah/9+h9f/fpqf/36w3/9+gd//foy//36Mh/9+lvf/fvvH/36BpIiAAYH+n/9+haXAgAGBp/9+guzX/36MnKiAAYSf/36CqICAAb+P/36BASN4MpSTDyN5U80g3ZXwgAGF99f/foX56IABiMrv/36GtbCAAYKP4IABg6P3/36DkqiAAYK2x/9+l+CAAYHk7/9+gsnggAGG44f/fofowIABgQEjiDKlkzAjiU7WIN2N+M//fsff/37Kx/9+hMiAAf//fqen/36Bqdf/foWF4IAByb//fqTf/36Ep5//foO5gIABpN//fsm//37Jv/9+pN//fsm//36k3/9+pN//fqTf/36k3/9+gvGggAGBtPiAAYG21/9+lsCAAYGhgIABgeWf/36Z//9+sP//foHf/36Tn/9+//9+g8f/fom3/36Fv/9+iN//foG13/9+kb//foSuoIABj/CAAY6ggAGBts//foKBwIAByb//fqTf/37Jv/9+ge/f/36HBCO5ACgAMgA3ACkAh/9+AIf/fgCf/7f/foEII9onlBAYApZ3AAIAAwACFJBmAAKTECQKsugg3YOU//9+garggAH4p/9+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rywDAa88AQKvQQABr0gBAa9cAAGvZAQBr5ACAa+4AgKvxwEBr80CAa/oAAGv8AIBsAAEAbAcAQGwRAQCsFMDAbB8AgGwjAICsJgBA7CfAAGwqAAEsKsBArCzAgGwxAACsMcAAbDQBAGxCAABsQsBAbESAAGxGAACsRsAArEjAgGxNAACsTcAAbFAAgGxUAABsVQDAbF4AwGxiAICsZIGAbHcAQGx6AUBsgQBAbILAAGyFAgBsmgAAbJ0AQGyhAEBspABArKYAAGyoAEBsqUEAbLIAwGy2AMCsuQBBLLrAAKy8wAEsvcBAbMAAgGzEAACsxMBArNUAQGzWwABs14AAbNkBAGzcAIBs4AAArODAwGzoAIBs8QBAbPLAgGz1AwBtCgCAbRQAgG0YBEBtNwBAbTjAQG07AMBtRQBAbUbAAG1JAADtScAAbUwAgG1QAACtUMAArVLAgG1XAACtV8AAbWgAgG1qgABtbAAArWzAAK1uwIBtcwAArXPAgG2EAgBtpwCAbarBQG3AAEBtygBAbcvAAG3OAQBt1QDAbdwAgG3fAIBt4wAA7ePAAO3lgIBt6gAArerAAG3tAMBt+wCAbf8AAK3/wACuAcCAbgYAgG4JAIBuDQAArg3BAG4XAIBuGwJAbjACAG46AIBuPgFAbk8BQG5WAIBuWgCAbl0AgG5hAEBuYkAAbmNAAG5rAIBubwCAbnIAQS5zgABudgBAbndAQK54wIBufQAA7n3AAG6AAIBujgDAbpIAQG6TQACulMCAbpkAAK6ZwABunACArqDAgG6qAABuqsCAbq4BAG62AsCuzQBA7s7AAG7RAMBu08SAbv4AQG7/wEBvAgAArwLAgS8FAAEvBsAAbwkAwG8MAIBvEAAArxDAQG8TAIBvIQBAbyLAQG8lAEBvJkAAbygAQG8pwABvLAAAryzAAG8vAMCvM8DArz0AgG9BAcBvUgCAb1YAgG9gAEDvYcAAb2QAgG9mQQBvdQJAb4MAgG+HAEBvkQDAb5UAQK+WQABvmADAb5wAAK+cwACvnsCAb6MAAK+jwABvpgBAb7QAQG+1wECvuMCAb8IAAG/GAACvxsAAb9AAgG/UAQBv8wKAcBoAAHAkAIBwKACAcCsAAHArwADwLMAAcC8AALAvwEBwMgCAcDYAALA2wABwOQCAcD0BwTBHAABwSMAAcEmAAHBLAACwS8BAcE4AgHBSAACwUsAAcFUAgHBZAACwWcEAsGMAwHBnAMBwagHAcHXAwHB8AEBwfwCAcIMAgHCGAEBwh8AAcIoAwHCMQIBwlAEAcJsAgHCfAIBwogEAcKkAQHCrAABwrQCAcLcAQHC4wACwusDAcL4AAHC+wEBwwgAAcMMAALDEwIBwyQAAcMoAQHDaAMBw3gAAcN8BAHD2AEBw98BAcPoAQHD9AcBxDwBAcRkAgHEdAcBxPADAsT/BAHFKAIBxTgCAcVEAALFSAACxUwAAsVTAALFVwABxV0AAcVgAgHFcAACxXMAAcV8AwHFjAMBxZcDAcW0AAHFuAADxbsABsXEAgHF0AIBxeACAsXsAgHF9gAFxfwAA8YFAgHGGAABxhsAAcYkAQLGLAECxjMDAcZAAgHGUAACxlMAAcZcBAHGeAYBxpQCAcakAgHGsAECxrgAAcbAAgHGzAIBxtwAAcbgAAHG6AIBxvgBAccEAgHHFAIBxyACAccwAwHHPAMBx0wBB8dRBAHHdAECx3wAAseDAAPHhwEBx5ABAseWAQHHoAADx6MAAcesAgHHvAACx78AAcfICAHIAAMByBABAcgVAAHIHAIByCwFAchIAAHITAEByHADAciAAQLIhQACyIsFAci8AwHI1AIByOACAcj8AQLJBAAByQwFAclQAgHJYAUByYgCAcmYAgHJwAEByccBAcnQAQHJ1QABydkAAcncBAHJ7AACye8AAcn4AgHKCAACygsDAcpMAgHKXAACyl8EAcq8AgHKzAMBytgHAcsgAQHLSAIBy1gCAct4BgHMDAIBzBwAAcwhAALMJwMBzDgAA8w7AAHMRAIBzFQAAsxXBgHMmAIBzKgAAsyrAAHMtAIBzMQIAc0IAgHNGAkBzWwEAc2UAgHNpAkBzfgHAc4gAgHOMAIBzlgBAs5fAAHOaAIBznQCAc6EAgHOkAIBzqAAAs6jAAHOrAEBzuQBAc7rAAHO9AACzvcAAc8AAgHPEAUBzywAAs8vAQHPVAIBz2QCAc9wCQHP4AIBz/AIAdA0AgHQRAYB0GwCAdB8AQHQpAIB0LQCAdDAAQHQyAAB0NAAAtDTAAHQ3AIB0OwAAtDvAgHRMAMB0UAAAtFDAAHRTAIB0VwHAdGgAgHRsAsB0iwCAdI8BQHSgAIB0pAGAdK4AQHSvwEB0sgEAdLkAAHS8AIB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", "KSCms-UHC-H": "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", "KSCms-UHC-HW-H": "AuBSQ29weXJpZ2h0IDE5OTAtMjAwOSBBZG9iZSBTeXN0ZW1zIEluY29ycG9yYXRlZC4KQWxsIHJpZ2h0cyByZXNlcnZlZC4KU2VlIC4vTElDRU5TRQABAIEAAQGBQYH7PSABAB+/HmABIF6/HmE/oaFdZYEiRIFDgTtdggiBIjKCZgEpgxmBIgmDQwUJg00HF4NXCBeDb4EoQ4QHgTxOhEuBMQOFGgEAhR4BB4UfAU2FJ4EiXYV1gSJShlOBLVWHJoEqIId8DyCIHYcvXYg+gSJdiRyBIl2JeoEiXYpYgSJdizaBIl2MFIEiXYxygSJdjVCBIl2OLoEiXY8MgSJdj2qBIl2QSIEiXZEmgSJdkgSBIl2SYoEiXZNAgSJdlB6BIl2UfIEiXZVagSJdljiBIl2XFoEiXZd0gSJdmFKBIl2ZMIEiXZoOgyJdmmyBIi6bSgAAoBQABJt5AACcXgAPm34BFpwOgSJdnCWBIi2dAwAAmwQAF50xARWdSYEiC51fAACdWgBQnWuBIlmePAAAnj4AAp8WYQHL5wC3DWEBzegAvVxhA4FBGch1BhnJDwZ9ySlhXYJBGconBhnKQQZ9yltCGctZBhnLcwZ9zA1CGc0LBhnNJQZ9zT9CGc49BhnOVwZ9znFCGc9vBhnQCQZ90CNCGdEhBhnROwZ90VVCGdJTBhnSbQZ90wdCGdQFBhnUHwZ91DlCGdU3BhnVUQZ91WtCGdZpBhnXAwZ91x1CGdgbBhnYNQZ92E9CGdlNBhnZZwZ92gFCGdp/BhnbGQZ92zNCGdwxBhncSwZ93GVCGd1jBhndfQZ93hdCGd8VBhnfLwZ930lCGeBHBhngYQZ94HtCGeF5BhniEwZ94i1CGeMrBhnjRQZ9419CGeRdBhnkdwZ95RFCGeYPBhnmKQZ95kNCGedBBhnnWwZ953VCGehzBhnpDQZ96SdCGeolBhnqPwZ96llCGetXBhnrcQZ97AtCGe0JBhntIwZ97T1CGe47BhnuVQZ97m9CGe9tBhnwBwZ98CFCGfEfBhnxOQZ98VNCGfJRBhnyawZ98wVCGfQDBhn0HQZ99DdhcKFBGfU1Bhn1TwYf9WmBIBn2CQYZ9iMGH/Y9gSAZ9l0GGfZ3Bh/3EYEgGfcxBhn3SwYf92WBIBn4BQYZ+B8GH/g5gSAZ+FkGGfhzBh/5DYEgGfktBhn5RwYf+WGBIBn6AQYZ+hsGH/o1gSAZ+lUGGfpvBh/7CYEgGfspBhn7QwYf+12BIBn7fQYZ/BcGH/wxgSAZ/FEGGfxrBh/9BYEgGf0lBhn9PwYf/VmBIBn9eQYZ/hMGH/4tgSAZ/k0GGf5nBh//AYEgGf8hBhn/OwYf/1WBIBn/dQYZgYAPBh+BgCmBIBmBgEkGGYGAYwYfgYB9gSAZgYEdBhmBgTcGH4GBUYEgGYGBcQYZgYILBh+BgiWBIBmBgkUGGYGCXwYfgYJ5gSAZgYMZBhmBgzMGH4GDTYEgGYGDbQYZgYQHBh+BhCGBIBmBhEEGGYGEWwYfgYR1gSAZgYUVBhmBhS8GH4GFSYEgGYGFaQYZgYYDBh+Bhh2BIBmBhj0GGYGGVwYfgYZxgSAZgYcRBhmBhysGH4GHRYEgGYGHZQYZgYd/Bh+BiBmBIBmBiDkGGYGIUwYfgYhtgSAZgYkNBhmBiScGH4GJQYEgGYGJYQYZgYl7Bh+BihWBIBmBijUGGYGKTwYfgYppgSAZgYsJBhmBiyMGH4GLPYEgGYGLXQYZgYt3Bh+BjBGBIBmBjDEGGYGMSwYfgYxlgSAZgY0FBhmBjR8GH4GNOYEgEYGNWXEJ0KEAnxkAnmoUnxoAnmoWny8AnHwLn0YAoCMgn1JxGtGhMp9zAKIWAKA8AaAmAKIXAaAoBaIYAKAqAK0oAqIeAKIiAKArA6IjAKAsAKInAKAtAaIqAKAuAKIsAqAvAKIvAqAyAKIzAKA1AaI2AKI5cSfSoQCgNgGiOgKgNwOiPACiQwCgOgCiRAOgOwCiSAqgPwCjHwKgSgGjIQCjJQCgTQSjJgCjLACgTgGjLQWjMAKjNwCgTwGjPQKgUAGjQQCgUwCjQwCjRgCgVACjVAOjVgGjWwCjYAOgVQOjfAGkAQCgWQGkAwWgWmE+06FdoGCBIkShPgAAoV4AFKIDAACgKAABohiBIgOiGgAArSgABKIeAACgKwABoiMAAKBgAE+iJYEiFqJ1AACgRwATowwAAKBMADCjIIEiKaNRAACrMAAXo3sBGaQTgSJdpC2BIl2lC4EiXaVpgSIjpkcAAKgfAB2mawAApjoAGacJgSIDpyMBWKcngSIDqAAAAKdXAC6oBAAAp3UAHagzAQmoUYEiWqhbAACrUAAAqTYAAKl3gSIRqTcBLKlJAACpcgAFqXYAAKptABWpfIEiT6oSAACucQAMqmKBIguqbwAAqlQAPqp7AACpRQAQqzqBIl2rS4EiU6wpAQisfYEjBq0GAACsLgBUrQ1hAdfkALIYYQXcpQC6XoJOALs3gz4AtyuIQQC2YYErALlKcRfloQytYgCtcgGtbwGiSQWtcQCiSwCtdwGiTQateACiTwitfwCiUwCuCACiVACuCQCiVQKuCgCiVyKuDQGiWgCgPwCuMACiXHE25qEAol8BrjEAomEBrjMAomIErjUAomUArjoComcArjsAomoCrjwBomsCrj8Aom8GrkIAoEAArkkBonEBrkoAoEEGrkwAonQCrlMAonUBrlYAonYBrlgAoEIBrloAoncArlwAongBrl0AonoAonkAonsArl8AonwArmABon4Asi8BrmEAowEArmMAowIAqlQBrmQAowMAoEMAoEYArmYAowUErmdxI+ehAKMHA65sAKMIAa5wAKMJAKMLAK5yAKBHAKMNAa5zAKMODa51AKMPAK8DALxnA68EAKMRAKMTAq8IAKMVAK8LAKMWAK8MAaMXAa8NAKMaCq8PAKMcA68aAKMdAK8eAKMeD68fAK0lBq8vcQ3ooUWvNgGjRwavfACjSQCgVASwAwCjSwCwCACtKACwCQCjTAGwCgCjTXEJ6aEFsAwAo1ADsBIAo1EesBYAo1MpsDUAvjQGsF9xDOqhH7BmAK9rIrEGAKNhDbEpAKBXAbE3AKNjA7E5AKNlALE9AKNmcRjroQKxPgCjaAGxQQCjagCxQwCjbACgWA6xRAGjbgCxUwCjcAKxVACjcQCjcwKxVwGjdAOxWgCjdwGxXgKjeACrMASxYACjeyWxZXEl7KEEsgsApAYApAgBshAApAoDshIArj4BpAwAoFsBshYApBEBshgApBMAshoApBUEshsBpBgCsiAApBoApBwBsiMBoFwJsiUApB4Gsi8BpCABsjYApCIBsjgApCQBsjoBpCUNsjwBpCcAskoApCoDskthCe2hAqQtjA0AoF+GQgChN4FDAKEXDwChKgoAoXSFTgCbZkMAnDyDQgCdZ2EE7e4AqWeJTgCsYzwArQuLdQCnYGEn7aRJsk8BD7MZgSI5sykAALJeACKzY4EiXbQGgSJdtGSBIl21QoEiG7YgATu2PAEDtniBIg+2fAFMtwyBIgW3WQAAslQARbdfAAC0HAAPuCWBIl24NYEiUrkTAQC5ZgAAt2MAB7lngSIWuW8BDroGAQm6FQEquh+BIjm6SgAAuxQAE7sEAQ27GIEiXbsmgSIAvB0BQrwEARe8R4EiXbxfgSIHvT0BVL1FgSJdvho=", "KSC-EUC-H": "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", "KSCpc-EUC-H": "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", "KSC-H": "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", "Adobe-Korea1-0": "AuBSQ29weXJpZ2h0IDE5OTAtMjAwOSBBZG9iZSBTeXN0ZW1zIEluY29ycG9yYXRlZC4KQWxsIHJpZ2h0cyByZXNlcnZlZC4KU2VlIC4vTElDRU5TRQEBAADJf3ElAACBfwCBf4IAgX+EAIF/hgCBf4gAgX+KAIF/jACBf44AgX+QAIF/kgCBf5QAgX+WAIF/mACBf5oAgX+cAIF/ngCBf6AAgX+iAIF/pACBf6YAgX+oAIF/qgCBf6wAgX+uAIF/sACBf7IAgX+0AIF/tgCBf7gAgX+6AIF/vACBf74AgX/AAIF/wgCBf8QAgX/GAHTIAA==", "Adobe-Korea1-1": "AuBSQ29weXJpZ2h0IDE5OTAtMjAwOSBBZG9iZSBTeXN0ZW1zIEluY29ycG9yYXRlZC4KQWxsIHJpZ2h0cyByZXNlcnZlZC4KU2VlIC4vTElDRU5TRQEBAACBjX9xRwAAgX8AgX+CAIF/hACBf4YAgX+IAIF/igCBf4wAgX+OAIF/kACBf5IAgX+UAIF/lgCBf5gAgX+aAIF/nACBf54AgX+gAIF/ogCBf6QAgX+mAIF/qACBf6oAgX+sAIF/rgCBf7AAgX+yAIF/tACBf7YAgX+4AIF/ugCBf7wAgX++AIF/wACBf8IAgX/EAIF/xgCBf8gAgX/KAIF/zACBf84AgX/QAIF/0gCBf9QAgX/WAIF/2ACBf9oAgX/cAIF/3gCBf+AAgX/iAIF/5ACBf+YAgX/oAIF/6gCBf+wAgX/uAIF/8ACBf/IAgX/0AIF/9gCBf/gAgX/6AIF//ACBf/4AgX+BgACBf4GCAIF/gYQAgX+BhgCBf4GIAIF/gYoAgWqBjAA=", "Adobe-Korea1-2": "AuBSQ29weXJpZ2h0IDE5OTAtMjAwOSBBZG9iZSBTeXN0ZW1zIEluY29ycG9yYXRlZC4KQWxsIHJpZ2h0cyByZXNlcnZlZC4KU2VlIC4vTElDRU5TRQEBAACBj39xSAAAgX8AgX+CAIF/hACBf4YAgX+IAIF/igCBf4wAgX+OAIF/kACBf5IAgX+UAIF/lgCBf5gAgX+aAIF/nACBf54AgX+gAIF/ogCBf6QAgX+mAIF/qACBf6oAgX+sAIF/rgCBf7AAgX+yAIF/tACBf7YAgX+4AIF/ugCBf7wAgX++AIF/wACBf8IAgX/EAIF/xgCBf8gAgX/KAIF/zACBf84AgX/QAIF/0gCBf9QAgX/WAIF/2ACBf9oAgX/cAIF/3gCBf+AAgX/iAIF/5ACBf+YAgX/oAIF/6gCBf+wAgX/uAIF/8ACBf/IAgX/0AIF/9gCBf/gAgX/6AIF//ACBf/4AgX+BgACBf4GCAIF/gYQAgX+BhgCBf4GIAIF/gYoAgX+BjACBL4GOAA=="};
+  function b64(s){var b=atob(s),u=new Uint8Array(b.length);for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
+  function CMapFactory(){}
+  CMapFactory.prototype.fetch=function(o){
+    var n=o.name;
+    if(CM_EMBED[n]) return Promise.resolve({cMapData:b64(CM_EMBED[n]),compressionType:1});
+    return fetch(LIB.cmap+n+'.bcmap').then(function(r){if(!r.ok)throw new Error('cmap '+n);return r.arrayBuffer()}).then(function(buf){return {cMapData:new Uint8Array(buf),compressionType:1}});
+  };
+  function readPdf(file){
+    return loadScript(LIB.pdf).then(function(){
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc=LIB.worker;
+      return file.arrayBuffer();
+    }).then(function(buf){
+      return window.pdfjsLib.getDocument({data:new Uint8Array(buf),cMapUrl:LIB.cmap,cMapPacked:true,CMapReaderFactory:CMapFactory}).promise;
+    }).then(function(doc){
+      var pages=[],chain=Promise.resolve();
+      for(var i=1;i<=doc.numPages;i++){(function(n){chain=chain.then(function(){return doc.getPage(n)}).then(function(pg){return pg.getTextContent()}).then(function(tc){pages.push({items:tc.items})})})(i)}
+      return chain.then(function(){return pages});
+    });
+  }
+
+  /* ---------- 업로드·자동 분석 ---------- */
+  var PA=null,PP=null,UM=[];
+  function setSt(id,txt,cls){var e=$(id);e.textContent=txt;e.className='st'+(cls?' '+cls:'')}
+  function dropState(id,cls){var e=$(id);e.classList.remove('done','bad');if(cls)e.classList.add(cls)}
+  function applyParsed(){
+    var keep={name:S.meta.name,birth:S.meta.birth,phone:S.meta.phone};
+    if(S.example){ S=blank(); S.meta.name=keep.name==='홍길동(예시)'?'':keep.name; S.meta.birth=''; S.meta.phone=''; if(keep.birth&&keep.birth!=='1990.01.01')S.meta.birth=keep.birth; if(keep.phone&&keep.phone!=='010-0000-0000')S.meta.phone=keep.phone; }
+    S.example=false;
+    if(PA){
+      S.contracts=PA.contracts.length?PA.contracts.map(function(c,i){return {co:c.co,name:c.name,start:c.start,end:/^9999/.test(c.end)?'-':c.end,fee:c.fee,paid:c.paid,total:c.total,per:PA.per?PA.per[i]:null,cancel:false}}):[{co:'',name:'',start:'',end:'',fee:'',paid:'',total:''}];
+      S.items.forEach(function(it,i){ it.std=String(PA.std[i]); it.before=PA.have[i]>0?String(PA.have[i]):''; });
+      if(PA.adate) S.meta.adate=PA.adate;
+    }
+    if(PP){
+      var M=PC.mapCoverages(PP.cov); UM=M.unmatched;
+      S.items.forEach(function(it){ it.add=M.add[it.n]?String(M.add[it.n]):''; it.note=M.note[it.n]||''; });
+      S.plan=PC.groupPlan(PP.cov,M);
+      var m=PP.meta;
+      if(m.product) S.meta.product=m.product;
+      if(m.insurer) S.meta.insurer=m.insurer.replace(/^(메리츠)$/,'메리츠화재');
+      if(m.term) S.meta.term=m.term;
+      if(m.prem){S.meta.prem=String(m.prem);S.meta.billed=String(m.billed||m.prem)}
+      S.meta.pdate=m.pdate||S.meta.pdate||today();
+      if(!S.meta.name&&m.insured) S.meta.name=m.insured;
+    }
+    buildAll();
+    umRender();
+  }
+  function today(){var d=new Date();return d.getFullYear()+'.'+('0'+(d.getMonth()+1)).slice(-2)+'.'+('0'+d.getDate()).slice(-2)}
+  function umRender(){
+    var b=$('umBox'); if(!b) return;
+    if(!UM.length){b.innerHTML='';return}
+    b.innerHTML='<details class="um"><summary>자동 매칭되지 않은 담보 '+UM.length+'개 (보장 비교에는 반영되지 않았습니다)</summary><ul>'+UM.map(function(c){return '<li>'+esc(PC.short(c.name))+' · '+fmt(c.amt)+'만원 · '+fmt(c.prem)+'원'+(c.renew?' · 갱신형':'')+'</li>'}).join('')+'</ul></details>';
+  }
+  function summarize(){
+    var m=[],w=[];
+    if(PA){ m.push('보장분석지: 계약 '+PA.contracts.length+'건, 보장 37개 항목'); PA.warn.forEach(function(x){w.push(x)}) }
+    if(PP){ m.push('가입제안서: 담보 '+PP.cov.length+'개'+(PP.meta.prem?', 보장보험료 '+fmt(PP.meta.prem)+'원':'')+', 자동 매칭 '+(PP.cov.length-UM.length)+'개'); PP.warn.forEach(function(x){w.push(x)}) }
+    var box=$('upMsg');
+    box.innerHTML=(m.length?'<div>'+m.map(esc).join('<br>')+'</div>':'')+w.map(function(x){return '<div class="w">'+esc(x)+'</div>'}).join('')+
+      (PA&&PP?'<div style="margin-top:8px"><button class="btn pri" type="button" id="goDoc">분석지 보기</button></div>':'');
+    var g=$('goDoc'); if(g) g.addEventListener('click',function(){show(4)});
+  }
+  function handleFile(kind,file){
+    var sid=kind==='A'?'stA':'stP',did=kind==='A'?'dropA':'dropP';
+    if(!file) return;
+    if(!/\.pdf$/i.test(file.name)&&file.type!=='application/pdf'){setSt(sid,'PDF 파일만 올릴 수 있습니다.','err');dropState(did,'bad');return}
+    setSt(sid,'읽는 중…','');dropState(did,'');
+    readPdf(file).then(function(pages){
+      var total=pages.reduce(function(a,p){return a+p.items.length},0);
+      if(!total) throw new Error('글자를 읽지 못했습니다. 스캔·사진으로 만든 PDF이거나 보호된 파일일 수 있습니다. 보장분석지 원본 PDF를 다시 올려 주세요.');
+      if(kind==='A'){
+        var r=PC.parseAnalysis(pages);
+        if(!r.ok){ var alt=PC.parseProposal(pages); throw new Error(alt.ok?'제안서로 보입니다. 오른쪽 ② 칸에 올려 주세요.':r.warn[0]); }
+        PA=r; setSt(sid,'계약 '+r.contracts.length+'건 · 37개 항목 읽음 · '+file.name,'ok');
+      } else {
+        var q=PC.parseProposal(pages);
+        if(!q.ok){ var alt2=PC.parseAnalysis(pages); throw new Error(alt2.ok?'보장분석지로 보입니다. 왼쪽 ① 칸에 올려 주세요.':q.warn[0]); }
+        PP=q; setSt(sid,'담보 '+q.cov.length+'개 읽음 · '+file.name,'ok');
+      }
+      dropState(did,'done'); applyParsed(); summarize();
+    }).catch(function(e){
+      if(kind==='A')PA=null;else PP=null;
+      setSt(sid,String(e&&e.message||e),'err');dropState(did,'bad');
+    });
+  }
+  [['A','fileA','dropA'],['P','fileP','dropP']].forEach(function(t){
+    var inp=$(t[1]),lab=$(t[2]);
+    inp.addEventListener('change',function(){handleFile(t[0],inp.files&&inp.files[0]);inp.value=''});
+    ['dragenter','dragover'].forEach(function(ev){lab.addEventListener(ev,function(e){e.preventDefault();lab.classList.add('over')})});
+    ['dragleave','drop'].forEach(function(ev){lab.addEventListener(ev,function(e){e.preventDefault();lab.classList.remove('over')})});
+    lab.addEventListener('drop',function(e){var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];handleFile(t[0],f)});
+  });
+  $('btnClear').addEventListener('click',function(){PA=null;PP=null;UM=[];['stA','stP'].forEach(function(i){setSt(i,'')});dropState('dropA','');dropState('dropP','');$('upMsg').innerHTML='';umRender()});
+  $('btnSample').addEventListener('click',function(){PA=null;PP=null;UM=[];['stA','stP'].forEach(function(i){setSt(i,'')});dropState('dropA','');dropState('dropP','');$('upMsg').innerHTML='';umRender()});
+
+  /* ---------- PDF 다운로드 ---------- */
+  var dlP=null;
+  function getDL(){
+    if(!dlP) dlP=(window.claude&&typeof window.claude.use==='function')?Promise.resolve(window.claude.use('downloads')).catch(function(){return null}):Promise.resolve(null);
+    return dlP;
+  }
+  function makePdf(btn){
+    var note=$('pdfNote'),old=btn.textContent;
+    btn.disabled=true;btn.textContent='PDF 만드는 중…';note.textContent='';
+    var stage=null;
+    Promise.all([loadScript(LIB.h2c),loadScript(LIB.jspdf),document.fonts&&document.fonts.ready]).then(function(){
+      var C=compute();
+      stage=document.createElement('div');stage.className='pdfstage';
+      stage.innerHTML='<div class="pdfroot"><div class="pdfpool" id="pdfPool">'+renderDoc(true)+'</div><div id="pdfPages"></div></div>';
+      document.body.appendChild(stage);
+      var pool=stage.querySelector('#pdfPool'),pages=stage.querySelector('#pdfPages');
+      var blocks=[].slice.call(pool.children),BODY=985,out=[];
+      blocks.forEach(function(b){ out=out.concat(splitBlock(b,pool,BODY)) });
+      var pgEls=[],cur=null;
+      function newPage(){ var p=document.createElement('div');p.className='pdfpage';p.innerHTML='<div class="pp-head"><b>굿리치WM본부</b><span>보장분석 &amp; 보험 제안서</span></div><div class="pp-body"></div><div class="pp-note"><b>안내사항</b> | '+esc(DISCLAIMER)+'</div><div class="pp-foot"><b>'+esc(agentLine())+'</b><span class="pn"></span></div>';pages.appendChild(p);pgEls.push(p);return p }
+      out.forEach(function(b){
+        if(!cur) cur=newPage();
+        var body=cur.querySelector('.pp-body');
+        body.appendChild(b);
+        if(body.scrollHeight>body.clientHeight+1 && body.children.length>1){ body.removeChild(b); cur=newPage(); cur.querySelector('.pp-body').appendChild(b); }
+      });
+      var nm=(S.meta.name||'').trim();
+      pgEls.forEach(function(p,i){ p.querySelector('.pn').textContent=(nm?nm+' 고객님 · ':'')+(i+1)+' / '+pgEls.length });
+      var jsPDF=window.jspdf.jsPDF,pdf=new jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
+      var chain=Promise.resolve();
+      pgEls.forEach(function(p,i){
+        chain=chain.then(function(){return window.html2canvas(p,{scale:2,backgroundColor:'#ffffff',logging:false,useCORS:true})}).then(function(cv){
+          if(i>0) pdf.addPage();
+          pdf.addImage(cv.toDataURL('image/jpeg',0.92),'JPEG',0,0,210,297);
+        });
+      });
+      return chain.then(function(){
+        var safe=(nm||'고객').replace(/[\\/:*?"<>|]/g,'').slice(0,20);
+        var fn='보장분석_'+safe+'_'+today().replace(/\./g,'')+'.pdf';
+        if(!inFrame){ pdf.save(fn); return 'saved'; }
+        /* claude.ai 화면 안에서는 직접 내려받기가 막혀 있어 저장 확인창(downloads)을 거친다 */
+        return getDL().then(function(dl){
+          if(!dl){ pdf.save(fn); return 'saved'; }
+          return dl.save({filename:fn,data:pdf.output('blob')}).then(function(){return 'saved'});
+        });
+      });
+    }).then(function(){ note.textContent='PDF를 저장했습니다.' }).catch(function(e){
+      var c=e&&e.code;
+      if(c==='declined') note.textContent='저장을 취소했습니다.';
+      else if(c==='rate_limited') note.textContent='저장 확인창이 이미 열려 있습니다. 잠시 후 다시 눌러 주세요.';
+      else if(c) note.textContent='이 화면에서는 PDF를 저장할 수 없습니다. 업무 허브의 페이지에서 내려받아 주세요.';
+      else note.textContent='PDF를 만들지 못했습니다: '+(e&&e.message||e);
+    }).then(function(){ if(stage&&stage.parentNode) stage.parentNode.removeChild(stage); btn.disabled=false;btn.textContent=old });
+  }
+  /* 한 장보다 긴 표 블록은 행 단위로 나눠 여러 장에 걸친다 */
+  function splitBlock(block,pool,maxH){
+    if(block.offsetHeight<=maxH) return [block];
+    var tb=block.querySelector('tbody'); if(!tb) return [block];
+    var rows=[].slice.call(tb.children),parts=[],first=true;
+    var head=block.cloneNode(true); head.querySelector('tbody').innerHTML='';
+    var cur=null;
+    function fresh(){
+      var c=block.cloneNode(true); c.querySelector('tbody').innerHTML='';
+      if(!first){ var h3=c.querySelector('h3'); if(h3) h3.textContent+=' (계속)'; [].slice.call(c.querySelectorAll('.sub,.legend')).forEach(function(n){n.parentNode.removeChild(n)}); }
+      first=false; pool.appendChild(c); parts.push(c); return c;
+    }
+    cur=fresh();
+    rows.forEach(function(r){
+      var t=cur.querySelector('tbody');
+      t.appendChild(r.cloneNode(true));
+      if(cur.offsetHeight>maxH && t.children.length>1){
+        var last=t.lastChild; t.removeChild(last);
+        var carry=[last];
+        while(t.lastChild&&t.lastChild.classList.contains('grp')){carry.unshift(t.lastChild);t.removeChild(t.lastChild)}
+        cur=fresh(); carry.forEach(function(n){cur.querySelector('tbody').appendChild(n)});
+      }
+    });
+    pool.removeChild(block);
+    return parts;
+  }
+
+  buildAll();
+})();
+</script>
+</body>
+</html>
