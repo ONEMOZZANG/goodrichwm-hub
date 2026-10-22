@@ -1,0 +1,1148 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>생보 시책 계산기</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap">
+<style>
+  /* Layout: 모바일 세로 한 단. 보험사·상품 입력 → 예상 합계 → 회사 비교표 → 회사별 상세(상품별 · 추가시상 · 기간 합산 구간표). 손보 시책 계산기와 같은 톤. */
+  :root {
+    --bg: #f2f5f9;
+    --surface: #ffffff;
+    --ink: #0d2038;
+    --muted: #586a80;
+    --line: #d9e1eb;
+    --head-bg: #123a6b;
+    --head-fg: #ffffff;
+    --accent: #1b62d6;
+    --accent-soft: #e4eefd;
+    --hit: #cfe3ff;
+    --red: #c2283a;
+    --gold: #8a6a10;
+    --gold-soft: #f6eccb;
+    --sans: 'Pretendard', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #09121f; --surface: #101d2f; --ink: #e7eef7; --muted: #92a3b9; --line: #223650;
+      --head-bg: #1a3558; --head-fg: #eaf2ff; --accent: #6aa4ff; --accent-soft: #14284a; --hit: #1d4274;
+      --red: #ff7d8b; --gold: #e6c35c; --gold-soft: #33290d;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #09121f; --surface: #101d2f; --ink: #e7eef7; --muted: #92a3b9; --line: #223650;
+    --head-bg: #1a3558; --head-fg: #eaf2ff; --accent: #6aa4ff; --accent-soft: #14284a; --hit: #1d4274;
+    --red: #ff7d8b; --gold: #e6c35c; --gold-soft: #33290d;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.45;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 16px 92px; }
+  .wrap { max-width: 560px; margin-inline: auto; display: flex; flex-direction: column; gap: 14px; }
+  h1 { font-size: 22px; font-weight: 800; margin: 0; letter-spacing: -.02em; text-wrap: balance; }
+  h2 { font-size: 15px; font-weight: 700; margin: 0; letter-spacing: -.01em; }
+  .sub { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .sec-h { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 8px; margin-bottom: 10px; }
+  .sec-h small { color: var(--muted); font-size: 12px; }
+  .banner { background: var(--accent-soft); color: var(--ink); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; margin-bottom: 10px; }
+  .btn { font: inherit; font-size: 14px; font-weight: 700; border-radius: 9px; padding: 11px 14px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+  .btn.pri { flex: 1; background: var(--head-bg); color: var(--head-fg); border-color: var(--head-bg); }
+  .btn.add { width: 100%; background: var(--accent-soft); border-color: var(--accent); }
+  .btn.sm { font-size: 12.5px; padding: 7px 10px; font-weight: 600; }
+  .btn.ghost { background: transparent; border-style: dashed; color: var(--accent); width: 100%; }
+  .picker { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { font: inherit; font-size: 13px; font-weight: 600; padding: 7px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+  .in-co { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px 12px; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .in-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .in-h b { font-size: 15px; font-weight: 800; }
+  .rm { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 7px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+  .it { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px 8px; padding: 8px 0 0; border-top: 1px solid var(--line); align-items: end; }
+  .it .full { grid-column: 1 / -1; }
+  .fld { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .fld label, .lbl { font-size: 11.5px; color: var(--muted); line-height: 1.3; }
+  select, input[type=number] { font: inherit; width: 100%; min-width: 0; padding: 8px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+  select { font-size: 13.5px; }
+  input[type=number] { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .chk { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
+  .chk input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .rate { font-size: 12px; color: var(--muted); }
+  .rate b { color: var(--accent); }
+  .rate i { font-style: normal; color: var(--red); font-weight: 700; }
+  details.man { border-top: 1px solid var(--line); padding-top: 8px; }
+  details.man summary { cursor: pointer; font-size: 12.5px; font-weight: 700; color: var(--accent); }
+  .man-g { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; margin-top: 8px; align-items: end; }
+  .empty { margin: 10px 0 0; padding: 14px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); font-size: 12.5px; }
+  .sum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .sum div { background: var(--bg); border-radius: 8px; padding: 9px 10px; min-width: 0; }
+  .sum small { display: block; color: var(--muted); font-size: 11.5px; }
+  .sum b { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .tot-box { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--accent-soft); border-radius: 8px; padding: 10px 12px; font-weight: 700; margin-top: 8px; }
+  .tot-box small { display: block; font-weight: 400; color: var(--muted); font-size: 11.5px; }
+  .tot-box b { white-space: nowrap; font-size: 21px; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .tw { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  .cmp { min-width: 520px; }
+  .cmp th { background: var(--head-bg); color: var(--head-fg); font-size: 11.5px; font-weight: 600; padding: 7px 6px; text-align: right; white-space: nowrap; }
+  .cmp th:first-child, .cmp td:first-child { text-align: left; position: sticky; left: 0; }
+  .cmp th:first-child { z-index: 2; }
+  .cmp td { padding: 8px 6px; border-top: 1px solid var(--line); text-align: right; font-size: 12.5px; white-space: nowrap; }
+  .cmp td:first-child { font-weight: 700; background: var(--surface); z-index: 1; }
+  .cmp td.tot { font-weight: 800; color: var(--accent); }
+  .cmp tbody tr { cursor: pointer; }
+  .cmp tfoot td { font-weight: 800; border-top: 2px solid var(--head-bg); }
+  .cmp tfoot td:first-child { background: var(--surface); }
+  details.co { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+  details.co + details.co { margin-top: 8px; }
+  details.co > summary { list-style: none; cursor: pointer; padding: 12px 14px; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; }
+  details.co > summary::-webkit-details-marker { display: none; }
+  .co-name { font-weight: 800; font-size: 15.5px; }
+  .co-tot { font-weight: 800; font-size: 16px; color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .co-brk { grid-column: 1 / -1; color: var(--muted); font-size: 11.5px; }
+  .co-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 12px; }
+  .grp { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 4px; border-bottom: 2px solid var(--line); font-size: 12.5px; color: var(--muted); font-weight: 700; }
+  .grp b { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .lt td, .lt th { padding: 6px 5px; border-bottom: 1px solid var(--line); font-size: 12.5px; vertical-align: top; }
+  .lt th { font-size: 11.5px; color: var(--muted); font-weight: 600; text-align: right; white-space: nowrap; }
+  .lt th:first-child, .lt td:first-child { text-align: left; }
+  .lt td { text-align: right; white-space: nowrap; }
+  .lt td:first-child { white-space: normal; min-width: 0; }
+  .lt td small { display: block; color: var(--muted); font-size: 11px; }
+  .lt tr.off td { color: var(--muted); }
+  .pg { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .pg-h { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; }
+  .pg-t { font-weight: 700; font-size: 13.5px; min-width: 0; }
+  .per { flex: none; background: var(--head-bg); color: var(--head-fg); border-radius: 6px; padding: 1px 7px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+  .meta { color: var(--muted); font-size: 12px; }
+  .vals { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; }
+  .vals span b { font-variant-numeric: tabular-nums; }
+  .tt th { text-align: center; font-weight: 600; font-size: 11.5px; color: var(--muted); padding: 5px 6px; white-space: nowrap; border: 1px solid var(--line); background: var(--bg); }
+  .tt td { text-align: center; padding: 5px 6px; border: 1px solid var(--line); font-size: 12.5px; white-space: nowrap; }
+  .tt td.pay { font-weight: 700; }
+  .tt tr.hit td { background: var(--hit); color: var(--ink); font-weight: 800; }
+  .tt caption { caption-side: top; text-align: left; font-size: 11.5px; color: var(--muted); padding-bottom: 3px; }
+  .tts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tts .tw { flex: 1 1 200px; min-width: 0; }
+  .res { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: 12.5px; }
+  .res b { font-size: 15px; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .res .why { color: var(--muted); font-size: 12px; }
+  .gold { display: inline-block; background: var(--gold-soft); color: var(--gold); border-radius: 6px; padding: 1px 7px; font-weight: 800; font-size: 12.5px; }
+  .memo { background: var(--bg); border-radius: 8px; padding: 10px 12px; }
+  .memo h3 { margin: 0 0 4px; font-size: 12.5px; }
+  .memo ul { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
+  details.ref summary { cursor: pointer; font-size: 12.5px; font-weight: 700; color: var(--accent); }
+  details.ref .tw { margin-top: 8px; }
+  .signoff { text-align: center; font-weight: 800; font-size: 14px; letter-spacing: -.01em; margin: 4px 0 8px; color: var(--head-bg); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .signoff { color: var(--ink); } }
+  :root[data-theme="dark"] .signoff { color: var(--ink); }
+  .fine { color: var(--muted); font-size: 11.5px; line-height: 1.5; margin: 0; }
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--surface); border-top: 1px solid var(--line);
+    padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+  .bar-in { max-width: 560px; margin-inline: auto; display: flex; gap: 8px; }
+  .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg);
+    padding: 9px 14px; border-radius: 9px; font-size: 13px; z-index: 30; max-width: calc(100vw - 32px); }
+  @media (max-width: 420px) { .sum { grid-template-columns: 1fr 1fr; } .sum div:last-child { grid-column: 1 / -1; } }
+  @media (prefers-reduced-motion: no-preference) { details.co .co-body { animation: fade .18s ease-out; } @keyframes fade { from { opacity: 0; } to { opacity: 1; } } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>생보 시책 계산기</h1>
+    <p class="sub">굿리치 RP/HY Channel · '26.10 시상안 21개사 · 금액 단위 원</p>
+  </header>
+
+  <section class="card" aria-labelledby="h-in">
+    <div class="sec-h"><h2 id="h-in">내 실적 입력</h2><small>월납 초회보험료(원 단위) · 체결일</small></div>
+    <p class="banner" id="sample" hidden>예시 실적이 들어 있습니다. 아래 ‘입력 비우기’를 누르고 내 실적으로 바꿔 입력하세요.</p>
+    <button class="btn add" type="button" id="btn-add" aria-expanded="false" aria-controls="picker">＋ 보험사 추가</button>
+    <div class="picker" id="picker" hidden></div>
+    <div id="inputs"></div>
+    <p class="empty" id="in-empty" hidden>＋ 보험사 추가를 눌러 실적을 입력할 보험사를 고르세요. 상품별로 월초(원 단위)와 체결일을 넣으면 상품별 지급률(익월·13회차)과 기간 합산 구간시상이 함께 계산됩니다.</p>
+  </section>
+
+  <section class="card" aria-labelledby="h-sum">
+    <div class="sec-h"><h2 id="h-sum">예상 시상금</h2><small>지급 시기별</small></div>
+    <div class="sum">
+      <div><small>익월 지급</small><b id="s-first">0</b></div>
+      <div><small>13회차 이후 (상품별)</small><b id="s-later">0</b></div>
+      <div><small>기간·구간 합산 시책</small><b id="s-prog">0</b></div>
+    </div>
+    <div class="tot-box"><span>총 예상 시상금<small id="s-gold">입력한 보험사 합계</small></span><b id="s-total">0원</b></div>
+  </section>
+
+  <section class="card" aria-labelledby="h-cmp">
+    <div class="sec-h"><h2 id="h-cmp">보험사별 비교</h2><small>행을 누르면 상세가 열립니다</small></div>
+    <div class="tw"><table class="cmp" id="cmp">
+      <thead><tr><th>보험사</th><th>월초 합계(원)</th><th>익월(원)</th><th>13회차 이후(원)</th><th>구간·합산(원)</th><th>합계(원)</th></tr></thead>
+      <tbody></tbody><tfoot></tfoot>
+    </table></div>
+  </section>
+
+  <section aria-labelledby="h-co">
+    <div class="sec-h"><h2 id="h-co">보험사별 상세</h2><small>상품별 · 추가시상 · 구간표</small></div>
+    <div id="cards"></div>
+  </section>
+
+  <p class="fine">계산 결과는 '26.10 RP/HY 채널 시상안 전단의 지급률과 구간표를 그대로 적용한 참고값입니다. 상품별 시책은 월납 초회보험료 × 지급률, 일시납은 일시납 보험료 × 지급률로 계산하고, 13회 구간 시책의 월초 합산은 그 기간(그달) 신계약 실적의 월초 합계이며, 1년간 납입한 보험료가 아닙니다. 체결일이 기간 안에 든 대상 상품 월초만 합산하고, 지급은 13회차 유지 확인 후 이뤄집니다. 9월·11월 실적이나 주력담보처럼 상품 목록으로 가를 수 없는 실적은 상세 입력에 직접 넣어야 반영됩니다. ‘구간 실적 50%’를 켠 상품은 구간 합산에서 월초의 절반만 인정합니다. 본인계약·비월납 제외, 환수, 중복 지급 여부, 지급 시기는 시상안 원문과 각 사 공지를 최종 확인하세요.</p>
+  <p class="signoff">굿리치 황원모 지점장</p>
+</div>
+
+<div class="bar"><div class="bar-in">
+  <button class="btn pri" type="button" id="btn-clear">입력 비우기</button>
+</div></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+/* ===== 데이터: 26.10 RP/HY 채널 생보 시책 (PDF 원문 기준) =====
+   R(상품, 납기, 익월%, 13회차%, 옵션)  X = 추가시상(기본 상품에 더해 지급, m = 대상 상품)  LS = 일시납 */
+var R = function (n, t, i, a, o) { return Object.assign({ n: n, t: t || '', i: i == null ? null : i, a: a == null ? null : a }, o || {}); };
+var X = function (n, t, i, a, m, o) { return R(n, t, i, a, Object.assign({ ad: 1, m: m || '' }, o || {})); };
+var LS = { ls: 1 };
+var CO = [];
+
+CO.push({ id: 'abl', n: 'ABL생명', rows: [
+  R('우리WON더드림종신보험Ⅲ(해약환급금 일부지급형)', '5년납', 120),
+  R('우리WON더드림종신보험Ⅲ(해약환급금 일부지급형)', '7년납', 180, 120),
+  R('우리WON더드림종신보험Ⅲ(해약환급금 일부지급형)', '10년납', 120),
+  R('우리WON더드림종신보험Ⅲ(해약환급금 일부지급형)', '15년납 이상', 60),
+  R('우리WON더블종신보험(해약환급금 일부지급형)', '7년납', 150),
+  R('우리WON더블종신보험(해약환급금 일부지급형)', '10년납', 120),
+  R('우리WON더블종신보험(해약환급금 일부지급형)', '15년납 이상', 60),
+  R('우리WON상속종신보험·상속종신보험Trust(해약환급금 미지급형)', '전기납', 120, 120),
+  R('우리WON건강N더보장종합보험(기본형)', '10년납 이상', 60),
+  R('우리WON톡톡뛰는여성건강보험(기본형)', '10년납 이상', 60),
+  R('우리WON더담은암보험(기본형)', '10년납 이상', 60),
+  R('우리WON건강N더보장종합보험(갱신형/해약환급금 미지급형)', '10년납 이상', 150, 540),
+  R('우리WON톡톡뛰는여성건강보험(해약환급금 미지급형)', '10년납 이상', 150, 540),
+  R('우리WON케어간병보험(해약환급금 미지급형)', '10년납 이상', 150, 540),
+  R('우리WON더담은암보험(해약환급금 미지급형)', '10년납 이상', 150, 540)
+], tiers: [], memo: [
+  '13차월 기준 계속보험료 입금 시 13회차 시책 지급(유예·연체건까지 인정)',
+  '모집 FC 본인계약, GA 자기계약은 시책비 부지급',
+  '13차월 이전 실효·해약·소멸 계약은 13차월 시책비 미지급, 시책비는 수수료 한도 초과 시 초과분을 13차월 이후 지급'
+] });
+
+CO.push({ id: 'aia', n: 'AIA생명', rows: [
+  R('AIA 안심+ 프라임 달러종신보험', '5년납', 180, 40),
+  R('AIA 안심+ 프라임 달러종신보험', '7년납', 230, 90),
+  R('AIA 안심+ 프라임 달러종신보험', '10년납', 180, 90),
+  R('AIA 안심+ 프라임 달러종신보험(1형 SI 간편)', '5년납', 60, 40),
+  R('AIA 안심+ 프라임 달러종신보험(1형 SI 간편)', '7년납', 120, 45),
+  R('AIA 안심+ 프라임 달러종신보험(1형 SI 간편)', '10년납', 120),
+  R('글로벌파워 미국달러연금(1형)', '3년납', 150),
+  R('글로벌파워 미국달러연금(1형)', '5년납', 240),
+  R('글로벌파워 미국달러연금(1형)', '10년납', 90),
+  R('AIA 글로벌 레거시 미국달러 상속종신보험 $200,000 이상', '일시납', 8.8, null, LS),
+  R('AIA 글로벌 레거시 미국달러 상속종신보험 $150,000~$200,000 미만', '일시납', 8.0, null, LS),
+  R('AIA 글로벌 레거시 미국달러 상속종신보험 $100,000~$150,000 미만', '일시납', 7.2, null, LS),
+  R('AIA 글로벌 레거시 미국달러 상속종신보험 $100,000 미만', '일시납', 6.4, null, LS),
+  R('AIA 달러로 받는 연금보험Ⅲ $30,000 이상', '일시납', 2.2, null, LS),
+  R('AIA 달러로 받는 연금보험Ⅲ $30,000 미만', '일시납', 2.0, null, LS),
+  X('[추가] 영업활성화프로모션(안심+ 프라임 달러종신 / 글로벌파워 미국달러연금 1형)', '', null, 30, '안심\\+ 프라임 달러종신보험(?!\\(1형 SI)|글로벌파워'),
+  X('[추가] 달러종신보험 영업활성화 추가 시상(일반/간편)', '', null, 60, '안심\\+ 프라임')
+], tiers: [], memo: [
+  '달러 상품은 보험료를 원화 환산액으로 입력하세요',
+  '13회차 시상은 13회차 보험료 입금 시 지급, 설계사 본인계약·타설계사 본인계약은 시상 제외',
+  '추가 납입보험료는 시상 제외, 계약일자(청약일) 기준으로 시책 적용',
+  '시책비는 원단위 미만 절사'
+] });
+
+CO.push({ id: 'bnp', n: 'BNP파리바카디프생명', rows: [
+  R('라이프UP정기', '', 180),
+  R('건강하면 더 좋은 대출안심보장보험 / 간편가입대출안심보장보험', '', 120),
+  R('적립형 변액보험(시그니처 ETF변액연금/저축보험(적립형), 시그니처AI변액연금보험(적립형))', '', 35),
+  R('일시납 변액보험 (기본보험료 2천만원 이상)', '일시납', 1.0, null, LS),
+  R('일시납 변액보험 (기본보험료 1억원 이상)', '일시납', 1.5, null, LS)
+], tiers: [], memo: [
+  '특약포함 기본보험료 기준, 대출안심보장보험은 할인전 보험료 기준',
+  '심사 마감후 신계약 성립기준으로 반송·무효·청약철회·거절 등 미성립건은 제외',
+  '승환계약은 시책비 대상에서 제외, 계약자 또는 피보험자가 설계사 본인인 계약은 제외'
+] });
+
+CO.push({ id: 'db', n: 'DB생명', rows: [
+  R('건강보험 (생활비 암보험 하이파이브·내가고른건강(초경증 포함)·건강100 내가고른 통합·당신곁에 치매간병)', '', 250, 360, { g: 'H' }),
+  R('뉴-올케어 암종신', '10/15년납', 250, 360),
+  R('뉴-올케어 암종신', '20년납', 130, 240),
+  R('뉴-알차고 행복한 플러스 종신', '7년납', 190, 120),
+  R('뉴-알차고 행복한 플러스 종신', '10년납', 190, 180),
+  R('경영인정기', '', 90, 130),
+  X('[추가] 대리점 파트너십 시상 (암·내가고른건강·건강100·치매간병)', '', null, 240, '^건강보험')
+], tiers: [], memo: [
+  '13차월 기준 계속보험료 입금 확인 후 13회차 시책 지급(연체입금까지 인정)',
+  '지급금액은 설계사 소득으로 귀속, 환수 후 부활 시 재지급 없음',
+  '비월납·일시납·실효·해지·소멸·납입면제 계약 제외, 본인계약 제외'
+] });
+
+CO.push({ id: 'ibk', n: 'IBK연금보험', rows: [
+  R('연금저축(하이브리드연금저축)', '5/7년납', 20),
+  R('연금저축(하이브리드연금저축)', '10년납 이상', 30),
+  R('IBK연금액 평생보장받는 변액연금보험', '5/7년납', 30),
+  R('IBK연금액 평생보장받는 변액연금보험', '10/11년납', 130),
+  R('IBK연금액 평생보장받는 변액연금보험', '12년납 이상', 155),
+  R('IBK평생든든 변액연금보험', '5/7년납', 30),
+  R('IBK평생든든 변액연금보험', '10년납 이상', 30),
+  R('IBK평생든든 변액연금보험_2604 (법인계약)', '', 30),
+  X('[추가] 우수 GA 활성화 시책 · 연금액 5/7년납', '', 30, null, '연금액.*5/7년납'),
+  X('[추가] 우수 GA 활성화 시책 · 연금액 10/11년납', '', 60, null, '연금액.*10/11년납'),
+  X('[추가] 우수 GA 활성화 시책 · 연금액 12년납 이상', '', 60, 30, '연금액.*12년납'),
+  X('[추가] 우수 GA 활성화 시책 · 평생든든', '', 30, null, '평생든든(?!.*법인)'),
+  X('[추가] 우수 GA 활성화 시책 · 평생든든 법인계약', '', 30, null, '법인')
+], tiers: [], memo: [
+  '지급기준: 월납초회보험료 × 상품별·납기별 차등 지급, 개인·법인계약 모두 자동 지급',
+  '13회차 시책은 13회차 보험료가 입금된 정상 유지 계약에 지급(해약·해지 등 소멸된 계약 제외)',
+  '부활 시 시책비 재지급 없음, 모집인 본인계약(모집인=계약자 또는 피보험자) 및 GA가 계약자인 경우 시책 제외'
+] });
+
+CO.push({ id: 'im', n: 'iM라이프생명', rows: [
+  R('당당한인생종신보험', '5년납', 120, 60),
+  R('[굿리치선지급시상 10/1~23] 당당한인생종신(일반)', '7년납', 383, 43),
+  R('당당한인생종신보험(간편)', '5년납', 60, 60),
+  R('[굿리치선지급시상 10/1~23] 당당한인생종신(간편)', '7년납', 240, 95),
+  R('든든한인생치매', '5년납', 60, 60),
+  R('든든한인생치매', '7년납', 120, 120),
+  R('마음든든유니종신', '10년납 이상', 120),
+  R('마음든든유니종신', '20년납 이상', 120, 60),
+  R('iM Active Care 치매간병보험', '10년납', 240),
+  R('iM Active Care 치매간병보험', '15년납', 300),
+  R('iM Active Care 치매간병보험', '20년납', 300, 240),
+  R('iM Active Care 치매간병보험', '30년납', 300, 300),
+  R('iM 스타트PRO·마스터PRO·트래블PRO 변액연금', '5년납', 60),
+  R('iM 스타트PRO·마스터PRO·트래블PRO 변액연금', '7년납', 90),
+  R('iM 스타트PRO·마스터PRO 변액연금', '10/12년납', 180, 60),
+  R('iM 스타트PRO·마스터PRO 변액연금', '15/20년납', 210, 60),
+  R('iM 세이프PRO 연금', '5/7년납', 120, 60),
+  R('iM 세이프PRO 연금', '10년납 이상', 180, 120),
+  R('마이솔루션 AI 변액연금', '5/7년납', 20),
+  R('마이솔루션 AI 변액연금', '10년납 이상', 30),
+  R('마이솔루션 AI 변액연금 S (월납 20만원 이상)', '5/7년납', 30),
+  R('마이솔루션 AI 변액연금 S (월납 20만원 이상)', '10년납', 60),
+  R('마이솔루션 AI 변액연금 S (월납 20만원 이상)', '12년납 이상', 120),
+  R('PlusPRO연금', '5년납', 60),
+  R('일시납 하이파이브 그랜아이지 변액연금', '일시납', 1.0, null, LS),
+  R('일시납 마이솔루션 AI 변액연금 / S', '일시납', 0.5, null, LS),
+  X('[추가] iM Pick 100 플랜 가입 (iM Active Care)', '', null, 60, 'Active Care', { of: 1 }),
+  X('[추가] iM Pick 200 플랜 가입 (iM Active Care)', '', null, 120, 'Active Care', { of: 1 }),
+  X('[추가] 파트너십 기본 프로모션 보장성 (당당한인생종신 5년납 / 마음든든유니종신 / Active Care)', '', null, 60, '당당한인생종신보험(?!\\(간편\\)).*5년납|^마음든든유니|Active Care'),
+  X('[추가] 파트너십 기본 프로모션 연금 (스타트·마스터·세이프·트래블PRO)', '', null, 30, 'PRO')
+], tiers: [], memo: [
+  '13차월 시책비 지급: 13회 계속 보험료 입금(해당·연체)과 13회 유지시 지급, 단 부활 보험료 제외',
+  '굿리치선지급시상은 10/1~10/23 기간 한정',
+  '산출기준: 성립마감 기준이며 본인(계약자 또는 피보험자, GA본인계약) 시책 지급 제외'
+] });
+
+CO.push({ id: 'kb', n: 'KB라이프', rows: [
+  R('넥스트벨입 연금보험(보증형)', '', 300),
+  R('트리플레벨업 연금보험(보증형)', '', 270),
+  R('KB 100세든든 연금보험', '5/7년납', 120, 60),
+  R('KB 100세든든 연금보험', '10년납 이상', 420, 60),
+  R('약속플러스 종신보험', '', 180, 30),
+  R('KB 리턴 종신보험', '5/7년납', 120, 90),
+  R('KB 리턴 종신보험', '10년납 이상', 120, 150),
+  R('KB 경영인정기보험 III', '', 90, 210),
+  R('KB 딱좋은 요즘/플러스 건강보험', '무해지형', 210, 240),
+  R('KB 딱좋은 요즘건강보험 갱신형', '무해지형', 210, 240),
+  R('KB 딱좋은 초경증 건강보험', '무해지형', 210, 240),
+  R('KB골드라이프 딱좋은 간병보험', '무해지형', 210, 240),
+  R('딱좋은0540건강보험', '무해지형', 210, 240),
+  R('KB라이프역모기지종신보험 (저해지)', '10년납 이상', 90, 55),
+  R('KB라이프역모기지종신보험 (무해지)', '10년납 이상', 90, 120),
+  R('KB더블업 역모기지 종신보험 (무해지)', '10년납 이상', 90, 120),
+  R('달러평생보장종신보험', '', 90, 30),
+  R('KB라이프 파트너종신보험', '', 90, 90),
+  R('KB Trust 라이프 파트너 종신보험', '', 90, 90),
+  R('KB역모기지 체증종신보험', '', 90, 90),
+  R('KB역모기지 일시납종신 / KB VIP변액연금(일시납) / KB 평생소득 변액연금(일시납)', '일시납', 0.5, null, LS),
+  R('정기보험·소득보장정기보험', '', 30)
+], tiers: [], memo: [
+  '13차 지급: 14차월에 정상유지 건에 한함(13회 응당 입금 후 해약·해지 등 소멸된 계약은 실적산출 시 제외)',
+  '모집인 본인계약 및 GA가 계약자인 신계약 산출 시 제외, 고액 할인계약은 할인 후 보험료 적용',
+  '납입면제 판정을 받은 경우 차년도 시상 제외'
+] });
+
+CO.push({ id: 'kdb', n: 'KDB생명', rows: [
+  R('건강보험 2종 (해약환급금 미지급형/일부(50%)지급형) (우)KDB라이프핏건강보험 / (무)암만생각해도 KDB암보험2.0', '', 300, 540, { g: 'H' }),
+  R('건강보험 2종 (표준형) (우)KDB라이프핏건강보험 / (무)암만생각해도 KDB암보험2.0', '', 150, 270, { g: 'H' }),
+  R('연금보험 2종 (우)더행복드림 변액연금 / (우)더행복플러스연금', '10년납 미만', 120),
+  R('연금보험 2종 (우)더행복드림 변액연금 / (우)더행복플러스연금', '10년납 이상', 210, 90),
+  R('더블찬스종신보험 Ⅱ', '5/7/10년납', 120),
+  R('우)서포트100건강종신(뷰트리플찬스종신보험) 일반형', '10/15년납', 180, 240),
+  R('우)서포트100건강종신(뷰트리플찬스종신보험) 일반형', '20년납', 240, 360),
+  R('우)서포트100건강종신(뷰트리플찬스종신보험) 간편심사형', '10/15년납', 180, 120),
+  R('우)서포트100건강종신(뷰트리플찬스종신보험) 간편심사형', '20년납', 240, 240),
+  X('[추가] 건강보험 특약활성화 보너스 (KDB라이프핏건강보험, 특약 부가 10개 이상 건, 표준형은 50% 적용)', '', null, 180, '라이프핏건강보험')
+], tiers: [], memo: [
+  '납입기간 10년 미만 계약은 지급액의 50% 지급(단, 저축성상품·연금보험 제외)',
+  '사용인 본인명의 계약(본인·피계약자)은 프로모션 적용 제외'
+] });
+
+CO.push({ id: 'nh', n: '농협생명', rows: [
+  R('NH올원더풀간병안심요양보험 (무해지)', '10/15/20년납', 240, 480),
+  R('NH올원더풀간병안심요양보험 (무해지)', '30년납', 120, 570),
+  R('NH올원더풀간병안심요양보험 (표준형)', '10/15/20년납', 120),
+  R('NH올원더풀간병안심요양보험 (표준형)', '30년납', 90),
+  R('NH올원더풀기억안심치매보험', '10/15년납', 180, 480),
+  R('NH올원더풀기억안심치매보험', '20년납', 160, 390),
+  R('백세팔팔NH건강보험 (갱신)', '10년납 이상', 240, 60),
+  R('백세팔팔NH건강보험 (비갱신)', '10년납 이상', 240),
+  R('9988NH건강보험', '10년납 이상', 30, 240),
+  R('핑크케어NH건강보험', '10년납 이상', 210, 240),
+  R('건강플러스NH통합보험 1종 (해지환급금 미지급형)', '10년납', 300, 840),
+  R('건강플러스NH통합보험 1종 (해지환급금 미지급형)', '15년납 이상', 295, 780),
+  R('건강플러스NH통합보험 2종 (표준형)', '10년납 이상', 120),
+  R('치료비안심해2NH건강보험 (갱신형)', '', 180, 180),
+  R('치료비안심해2NH건강보험 (비갱신형)', '', 230, 480),
+  R('기타건강보장 (정기보험은 건강보장 보험에 미포함)', '10년납 이상', 30, 90),
+  R('마이초이스NH종신보험 1종 (해지환급금 일부지급형)', '10년납', 180, 180),
+  R('마이초이스NH종신보험 1종 (해지환급금 일부지급형)', '12년납', 90, 30),
+  R('건강채움NH암종신보험 (스마트페이)', '10/15년납', 270, 150),
+  R('건강채움NH암종신보험 (일반페이)', '10년납', 270, 270),
+  R('건강채움NH암종신보험 (일반페이)', '15년납 이상', 230, 250),
+  R('행복한NH경영인정기보험 (표준형)', '20년납 이상', 90, 30),
+  R('행복한NH경영인정기보험 (해약환급일부지급형)', '20년납 이상', 90, 150)
+], tiers: [], memo: [
+  '13차 지급: 계약월 기준 14회차 말일까지 13회 보험료가 입금된 정상유지 계약(13회 연체입금까지 인정)',
+  '2차년 시상 지급 시점에 계약 해지 대상 제외',
+  '시책 제외: 설계사 본인계약(모집자=계약자 또는 피보험자), 일시납, 실손보험',
+  '마이초이스NH종신보험 2종(표준형) 시책 제외, 비월납(3월납·6월납·연납 등)은 월납환산 기준'
+] });
+
+CO.push({ id: 'kyobo', n: '교보생명', rows: [
+  R('교보 모두지킴 종신보험(간편포함)', '15년납 미만', 180, 270),
+  R('교보 모두지킴 종신보험(간편포함)', '15년납 이상', 180, 210),
+  R('교보경영인정기보험(간편포함)', '90세만기', 160, 110),
+  R('교보3밸런스보장보험PLUS(간편포함) · 보험료납입면제특약 미부가', '20년납 미만', 150, 300),
+  R('교보3밸런스보장보험PLUS(간편포함) · 보험료납입면제특약 미부가', '20년납', 150, 270),
+  R('교보3밸런스보장보험PLUS(간편포함) · 보험료납입면제특약 부가된 계약', '', 150, 240),
+  R('교보밸런스건강보험(간편포함)', '10년납 이상', 150, 30),
+  R('교보밸런스건강보험(간편포함)', '10년납 미만', 75),
+  R('교보 다시채움건강종신보험(간편포함)', '10년납 이상', 150, 210),
+  R('교보 다시채움건강종신보험(간편포함)', '10년납 미만', 75),
+  R('교보실속건강종신보험(저해약환급형)(간편포함) · 일반형 지원없음', '10년납 미만', 45),
+  R('교보실속건강종신보험(저해약환급형)(간편포함) · 일반형 지원없음', '10년납 이상', 90, 120)
+], tiers: [], memo: [
+  '13차 지급: 13회 보험료가 입금된 정상유지 계약의 월납보험료 기준으로 익월 지급',
+  '본인계약(계약자 또는 피보험자 또는 수익자 포함), GA계약은 제외, 미입금 후 부활 시 재지급 없음',
+  '교보3밸런스보장보험PLUS 5년납은 지원 제외, 교보실속건강종신보험 일반형은 지원 없음'
+] });
+
+CO.push({ id: 'dongyang', n: '동양생명', rows: [
+  R('우리WON하는치매간병보험 (저/무해지형)', '저/무해지형', 240, 180),
+  R('우리WON하는치매간병보험 (표준형)', '표준형', 120),
+  R('우리WON하는보장보험 무해지형 (일반/간편/건강/갱신/암)', '무해지형', 240, 180),
+  R('우리WON하는보장보험 표준형 (일반/간편/건강/갱신/암)', '표준형', 240),
+  R('우리WON하는쑥쑥어린이보장보험 (저해지)', '저해지형', 360, 180),
+  R('우리WON하는꿈나무우리아이보험 (무해지형)', '무해지형', 240, 660),
+  R('우리WON하는꿈나무우리아이보험 (표준형 및 만기환급형)', '표준형/만기환급형', 240),
+  R('우리WON안심상속종신보험', '', 240, 420),
+  R('우리WON하는알뜰플러스종신(일반/간편) 저해지형 (특약 제외)', '5년납', 300, 30),
+  R('우리WON하는알뜰플러스종신(일반/간편) 저해지형 (특약 제외)', '7년납', 180),
+  R('우리WON하는알뜰플러스종신(일반/간편) 저해지형 (특약 제외)', '10년납', 110),
+  R('우리WON하는유니버셜종신보험 (10년납은 13회차 시책 지급제외)', '', 30, 60),
+  R('우리WON하는VIP플러스정기보험', '', 30)
+], tiers: [], memo: [
+  '13차 프로모션 지급일: 15차월 지급(해당, 연체 일할 지급), 구간시상은 27년 12월 이후 지급',
+  '제외대상: 일시납, 5년납 미만, 본인계약(청약 후 6개월 내 설계사 본인으로 변경 시 본인계약으로 간주)',
+  '신상품 꿈나무우리아이 태아보험 적립형 계약 부가건은 태아보험 가입 익월 지급, 미부가건은 출생 후 익월 지급',
+  '실효건 및 14차월 도래시점까지 13회 미입금 계약은 시상 미지급(환수 시에도 재지급 없음)'
+] });
+
+CO.push({ id: 'lina', n: '라이나생명', rows: [
+  R('건강보험 (치아5년납·치매기본형·새담/암 제외)', '', 240, 120, { g: 'H' }),
+  R('건강보험 (치아5년납·치매기본형·새담/암)', '', 240, 30, { g: 'H' }),
+  R('무해지형 종신 (기본형 제외)', '', 180, 60),
+  R('저해지형 종신보험 7년납 THE 채우는(335 간편고지)종신보험 (그 외 종신은 무해지형)', '7년납', 240, 90),
+  R('저해지형 종신보험 10년납(일반) THE 채우는(335 간편고지)종신보험', '10년납', 180, 480),
+  R('저해지형 종신보험 10년납(간편) THE 채우는(335 간편고지)종신보험', '10년납', 180, 120)
+], tiers: [], memo: [
+  '13차월 시책비: 13회 보험료 입금(연체입금 포함)과 13회 유지시 지급, 2차년 시상은 13회 입금 확인 후 15차월에 지급',
+  '시책 기간 내 입력된 신계약 중 마감일 현재 계약이 유효한 건, 불건전 영업행위에 해당하는 모집건은 시책 제외',
+  '설계사 본인이 계약자·피보험자·수익자·납입자 중 하나 이상인 계약은 시책 지급 불가'
+] });
+
+CO.push({ id: 'metlife', n: '메트라이프생명', rows: [
+  R('(무)백만인을위한달러종신보험Plus', '5년납', 60),
+  R('[굿리치선지급시상 10/1~23] (무)백만인을위한달러종신보험Plus', '7년납', 254),
+  R('(무)백만인을위한달러종신보험Plus', '10년납', 180, 60),
+  R('(무)백만인을위한달러종신보험Plus', '15/20년납', 120),
+  R('(무)백만인을위한종신보험Plus', '5년납', 180),
+  R('(무)백만인을위한종신보험Plus', '7년납/10년납', 180),
+  R('(무)백만인을위한종신보험Plus', '15/20년납', 120),
+  R('(무)변액연금보험 동행 Plus (고도재해장해형)', '월납', 60),
+  R('(무)변액연금보험 동행 Plus (사망보장형)', '월납', 90),
+  R('(무)The Classic (달러)경영인정기보험(저해약환급형)', '전납기', 60),
+  R('(무)모두의 종신보험', '전납기', 60, 60),
+  R('(무)변액유니버셜 모두의 상속 종신보험', '전납기', 60, 60),
+  R('(무)변액유니버셜 오늘의 종신보험 Plus', '전납기', 60, 60),
+  R('(무)변액유니버셜VIP 종신보험 Plus', '전납기', 60, 60),
+  R('(무) 3 년내고만족하는달러종신보험', '전납기', 60, 60),
+  R('(무) 360 암보험', '전납기', 150),
+  R('(무)간편가입 360종합보장보험 (갱신형)', '전납기', 120),
+  R('(무)간편가입 360종합보장보험 (무해약환급형)', '전납기', 240),
+  R('(무)오로지 연금을 위한 달러연금보험 (보증비용부과형·보증형)', '전납기', 180),
+  X('[추가] 전략 제휴 상품 추가 시상 (무)오로지 연금을 위한 달러연금보험(보증비용부과형·보증형)', '전납기', null, 30, '오로지 연금')
+], tiers: [], memo: [
+  '달러 상품 시상 1차년도 시책은 유해약환급금형 및 납입면제특약 제외, 익월은 정산납초회보험료 기준',
+  '15차월 지급: 13차 시책은 정상유지 중인 건에 지급, 추가납입 보험료(월납초회보험료 대비 최대 10%)는 계약보험료 기준에 준해 적용',
+  '평가 제외건: 설계사 본인계약(Agent 상호계약), GA본인계약, 일시납, 비월납, 초회보험료 가상계좌 납입건'
+] });
+
+CO.push({ id: 'mirae', n: '미래에셋생명', rows: [
+  R('일반종신 - 미래를선택하는종신보험 / 간편하게선택하는종신보험', '20년납 미만', 120, 240),
+  R('일반종신 - 미래를선택하는종신보험 / 간편하게선택하는종신보험', '20년납 이상', 60, 180),
+  R('일반종신 - 헤리티지 종신보험 / 헤리티지 라이트종신', '', 120, 270),
+  R('M-케어 3.10.5 건강 (기본형)', '', 210, 210),
+  R('M-케어 3.10.5 건강 (무해지·갱신)', '', 210, 120),
+  R('M-케어 건강 (기본형)', '', 210, 210),
+  R('M-케어 건강 (무해지·갱신)', '', 210, 120),
+  R('M-케어 0세부터 건강 (기본형)', '', 210, 210),
+  R('M-케어 0세부터 건강 (무해지형)', '', 210, 120),
+  R('M-케어 치매간병 (기본형)', '', 210, 210),
+  R('M-케어 치매간병 (무해지형)', '', 210, 120),
+  R('암 걱정없는 암치료', '', 210, 120),
+  R('기타보장성 - 헤리티지 (변액)정기보험 / 치아보험', '', 60, 60),
+  R('변액종신 - 변액종신 미래의 약속', '', 60, 170),
+  R('변액종신 - 헤리티지 변액유니버셜종신', '', 60, 110),
+  R('변액종신 미담', '', 150, 35),
+  R('미래에셋생명 변액연금 (연금강화형 · 10년납 이상 · 10만원)', '', 60),
+  R('미래에셋생명 변액연금 (연금강화형 · 10년납 이상 · 20만원)', '', 120),
+  R('미래에셋생명 변액연금 (연금강화형 · 10년납 이상 · 일시납)', '일시납', 0.5, null, LS),
+  R('경영인을위한정기보험', '', 60)
+], tiers: [], memo: [
+  '13회차 지급: 13회 입금확인 후 15차월에 지급(14차월 13회 연체입금까지 인정, 이후 입금분 제외)',
+  '보험료 기준: 실 납입보험료(무배당 선택환 등, 계약변경 후 보험료 반영), 월 보험료 1만원 미만 제외',
+  '단체계약, 설계사 본인계약(계약자 또는 피보험자가 모집 본인인 경우)은 제외'
+] });
+
+CO.push({ id: 'samsung', n: '삼성생명', rows: [
+  R('골드종신', '납기무관', 90),
+  R('밸런스종신', '납기무관', 200),
+  R('(간편)더착한/VVIP종신', '15년납 이상', 200, 120),
+  R('(간편)더착한/VVIP종신', '15년납 미만', 300),
+  R('올백종신', '납기무관', 200, 120),
+  R('[10/1~18] 더행복 / 간편 더사랑종신 (입금계약일 기준)', '5년납', 360),
+  R('[10/1~18] 더행복 / 간편 더사랑종신 (입금계약일 기준)', '7년납 이상', 300),
+  R('암치료플러스종신', '10년납 이상', 180, 335),
+  R('더한결같은행복 연금보험 (연금강화형 한)', '일시납', 4.0, null, LS),
+  R('THE라이트A간편건강(갱신형) / 다모은(간편)', '10년납 초과', 300, null, { g: 'H' }),
+  R('THE라이트A간편건강(갱신형) / 다모은(간편)', '10년납 이하', 150, null, { g: 'H' }),
+  R('1540청춘대표건강 / 4180인생대표건강 / 가족대표건강', '10년납 이하', 150, null, { g: 'H' }),
+  R('1540청춘대표건강 / 4180인생대표건강 / 가족대표건강', '10년납 초과', 300, null, { g: 'H' }),
+  R('시니어대표건강', '전납기', 210, 300),
+  R('(간편)더블보장', '납기무관', 150, 300),
+  R('플러스원건강', '20년납 미만', 240, 270),
+  R('플러스원건강', '20년납 이상', 240, 390),
+  R('치아보험 / THE(더)Dream건강', '납기무관', 90),
+  R('CEO보장정기(간편포함) 저해약환급금형', '20년납 초과', 85),
+  R('단체보험 및 삼성정기', '10년납 이상', 120),
+  R('단체보험 및 삼성정기', '10년납 미만', 40),
+  X('[추가] 건강상해 13회 상생 프로모션 (THE라이트A·다모은·1540·4180·가족대표건강, 10년납 이하)', '', null, 135, '(THE라이트A|1540|4180|가족대표).*10년납 이하'),
+  X('[추가] 건강상해 13회 상생 프로모션 (THE라이트A·다모은·1540·4180·가족대표건강, 10년납 초과)', '', null, 270, '(THE라이트A|1540|4180|가족대표).*10년납 초과')
+], tiers: [], memo: [
+  '13회차 지급: 13회 유지계약 15차월에 지급, 실효계약은 15회차 입금월 이후 부활건 부지급',
+  '지사장·FC 본인계약 제외(본인이 계약자 또는 피보험자), 일시납 및 비월납계약 제외(단 더한결같은행복 연금보험 한 지급)',
+  '구간별 시책은 달성 금액에 대해 납입 보험료 비 지급률로 치환한 뒤 해당 납입보험료에 동 지급률을 곱해 산출하며, 원 미만의 단수 금액은 절사',
+  '1년 이내 계약자를 본인으로 변경 시 프로모션 전액 환수, 계약 해지 시 해당 계약건 프로모션 전액 환수, 부활 시 재지급 없음'
+] });
+
+CO.push({ id: 'shinhan', n: '신한라이프', rows: [
+  R('신한모아더드림종신보험', '5년납', 300),
+  R('신한모아더드림종신보험', '7년납', 270, 30),
+  R('신한모아더드림Plus 종신보험', '5년납', 300, 60),
+  R('신한모아더드림Plus 종신보험', '7년납', 240, 120),
+  R('신한모아더드림Plus 종신보험', '10년납', 240, 150),
+  R('신한통합건강ONE (납기 10년 이하 & 비갱신형 실적 50% 인정)', '', 210, 120, { g: 'H' }),
+  R('신한통합건강ONE(갱신형)', '', 210, 120, { g: 'H' }),
+  R('슈퍼ONE', '', 210, 120, { g: 'H' }),
+  R('라이트ONE / 라이트ONE고당지알파', '', 210, 120, { g: 'H' }),
+  R('케어받는암보험', '', 210, 120, { g: 'H' }),
+  R('신한리필종신보험', '', 300, 90),
+  R('신한3케어리워드종신', '', 300, 90),
+  R('위너스경영인정기보험', '', 60, 90),
+  R('ONE더드림변액연금보험 (기본형)', '5/7년납 · 10년납 이상', 30),
+  R('ONE더드림변액연금보험 (연금강화형)', '5년납', 60, 60),
+  R('ONE더드림변액연금보험 (연금강화형)', '7년납 · 10년납 이상', 60, 120),
+  R('ONE더드림변액연금보험 (기본형/연금강화형)', '일시납', 1.7, null, LS),
+  R('ONE더라이프연금보험', '5/7년납', 90),
+  R('ONE더라이프연금보험', '10년납 이상', 120, 60),
+  R('든든한실속(상속)종신보험 (특약시책인정비율 50%)', '', 240, 60),
+  R('The든든한종신보험 (특약시책인정비율 50%)', '', 240, 60),
+  R('신한통합종신보험ONE', '', 30, 120),
+  R('신한주니어큐브종합건강상해보험 (특약 3종 시책비 지급 제외)', '', 120)
+], tiers: [], memo: [
+  '13회 시책은 정률 시책 14회차, 구간 시책 15회차에 지급, 지급월 이후 입금·부활 건은 부지급',
+  '시책 부지급: GA관계자(법인·대표이사·임직원·지사/지점장), GFC 본인계약(계약자·피보험자 변경 시에도 해당)',
+  '비월납상품, 방카상품, 실손보험상품은 부지급, 구간 시책은 정해진 기간 내 합산 월납보험료 규모에 따라 지급',
+  '업적월의 익월 업적수수료 반송·마감일 이후 정산 지급, 당월 미승인 계약은 익월 지급(지급률은 마감일 기준), 할인 전 보험료 기준'
+] });
+
+CO.push({ id: 'chubb', n: '처브라이프생명', rows: [
+  R('Chubb (간편가입) New 수(特) 종신보험 1종(일반납입형)', '7/10년납', 180, 240),
+  R('Chubb New Medical 종신보험 1,2종', '5/7년납', 360, 240),
+  R('Chubb New Medical 종신보험 1,2종', '10년납', 420, 270),
+  R('Chubb New Medical 종신보험 1,2종', '20년납', 480, 210),
+  R('Chubb New Medical 종신보험 1,2종 (간편가입)', '5/7년납', 240, 120),
+  R('Chubb New Medical 종신보험 1,2종 (간편가입)', '10년납', 420, 270),
+  R('Chubb New Medical 종신보험 1,2종 (간편가입)', '20년납', 480, 210),
+  R('Chubb (간편가입) 패밀리케어 정기보험', '', 420, 60),
+  R('Chubb 매월받는 암생활비보험(갱신형)', '', 540, 60),
+  R('Chubb (간편가입) NEW매월받는 암생활비보험(갱신형)', '', 540, 360),
+  R('Chubb VIP변액유니버셜 종신보험', '20년납', null, 180)
+], tiers: [], memo: [
+  '13회차(차년도) 시상은 18차월에 지급, 시책 지급비는 최대 100% 한도로 지급',
+  '모든 시상은 주계약 보험료 1만원 미만인 건 제외, 특약 시상은 주계약 합산 기준',
+  '시책 제외: 본인·경영/승환/교차계약/일시납/추가납입/증액/중도부가 시책대상 제외',
+  '13회차 지급분은 신계약 월초보험료의 13회차 유지 확정 익월 25일, 유지계약분에 한해 지급'
+] });
+
+CO.push({ id: 'fubon', n: '푸본현대생명', rows: [
+  R('MAX 연금다운 연금보험(1형 보증비용 부과형)', '10년납', 180, 60),
+  R('MAX 연금다운 연금보험(1형 보증비용 부과형)', '20년납', 240, 60),
+  R('MAX 경영인 정기보험 탑픽 Ⅱ SI(간편가입) 55세 미만', '', null, 230),
+  R('MAX 경영인 정기보험 탑픽 Ⅱ GI(일반가입) 55세 미만', '', null, 190),
+  R('MAX핀트리플양로저축보험', '10년납/20년납', 15),
+  R('MAX종신보험 원픽', '5년납', 10, 115),
+  R('MAX종신보험 원픽', '7년납', 5, 60),
+  R('MAX UP 연금보험 - 연금강화형', '5년납', null, 15),
+  R('MAX UP 연금보험 - 연금강화형', '7년납', 40, 10, { b: 10 }),
+  R('MAX UP 연금보험 - 연금강화형', '10년납', 40, 40, { b: 10 }),
+  R('푸본현대 건강보험 마이픽', '10/15/20/30년납', 190, 230),
+  R('푸본현대 건강보험 마이픽SI(간편가입) 암진단/항암방사선/소액암 특약', '10/15년납', 190, 105),
+  R('푸본현대 정기보험 스마트픽', '전납기', 180, 180),
+  X('[추가] 영업활성화 프로모션 · MAX 경영인 정기보험 탑픽Ⅱ (55세 미만)', '', 30, null, '탑픽'),
+  X('[추가] 영업활성화 프로모션 · MAX종신보험 원픽 5년납', '', 55, null, '원픽.*5년납'),
+  X('[추가] 영업활성화 프로모션 · MAX종신보험 원픽 7년납', '', 35, null, '원픽.*7년납'),
+  X('[추가] 영업활성화 프로모션 · 푸본현대 건강보험 마이픽', '', 60, null, '건강보험 마이픽')
+], tiers: [], memo: [
+  '차년도 시상: 13/25회차 프로모션은 13/25회차 유지계약에 한하여 지급, 구간시상은 상위 구간 달성 시 하위 구간 중복 지급 없음',
+  'MAX 연금다운 연금보험의 익월/13회 지급률은 주계약 기준, 종신사망특약 보험료에 대해서는 시책 없음',
+  '① GFP 본인계약 및 GA자기계약(법인 계약자)의 경우 프로모션 지급 제외 ② 말일까지 출금 후 심사 마감일까지 승낙된 계약에 한해 지급',
+  '③ 전월 신계약 청약 건 중 익월 청약철회·반송·해지 후 재청약 시 Promotion 지급 대상에서 제외'
+] });
+
+CO.push({ id: 'hana', n: '하나생명', rows: [
+  R('하나로 The 연결된 종신보험', '5/7/10년납', 300, 60),
+  R('하나로 The 연결된 종신보험', '15년납', 180, 90),
+  R('하나로 The 연결된 종신보험', '20년납', 150, 90),
+  R('The든든한 연금보험', '전기납', 90),
+  R('하나로누리는건강보험', '', 300, 150, { g: 'H' }),
+  R('하나로라이트3.10.5간편건강보험', '', 300, 150, { g: 'H' })
+], tiers: [], memo: [
+  '익월 지급분: 업적월 익월 15일 기준 계약상태가 정상인 건 / 13회차 유지 지급분: 판정월(14회차) 기준 13회 이상 보험료 납입 시 15회차 지급',
+  '해당월 신계약 중 건강보험 납입기간 10년 납이하 비갱신형 상품은 [월초 × 50%] 적용 인정 / 표준형 상품은 [월초 × 50%] 적용',
+  '비월납, 연납, 일시납 계약 및 GA 관계자(법인, 지사, 임직원 등), 설계사 본인계약은 지급 제외, 불건전 영업행위 시 시책비 전액 환수'
+] });
+
+CO.push({ id: 'hanwha', n: '한화생명', rows: [
+  R('(일반/간편) 실속가득H통합보험(보장통장)', '', 240, 120, { g: 'H' }),
+  R('(일반/간편) 실속가득H통합보험(보장통장) 판매활성화 특별지원', '15년납 이상', 120, 30, { g: 'H' }),
+  R('(일반/간편) 실속가득H통합보험(보장통장) 판매활성화 특별지원', '10년납', 60, 30, { g: 'H' }),
+  R('(일반/간편) 실속가득H통합보험', '', 240, null, { g: 'H' }),
+  R('(일반/간편) 시그니처H통합보험(보장통장)', '', 240, 120, { g: 'H' }),
+  R('(일반/간편) 시그니처H통합보험(보장통장) 판매활성화 특별지원', '15년납 이상', 120, 30, { g: 'H' }),
+  R('(일반/간편) 시그니처H통합보험(보장통장) 판매활성화 특별지원', '10년납', 60, 30, { g: 'H' }),
+  R('(일반/간편) 시그니처H통합보험', '', 240, null, { g: 'H' }),
+  R('(일반/간편) 시그니처H암보험', '10년납 이상', 300, 480, { g: 'H' }),
+  R('(일반/간편) 시그니처H암보험', '10년납 미만', 180, null, { g: 'H' }),
+  R('(일반/간편) 치매담은간병플러스보험', '10년납', 270, 210, { g: 'H' }),
+  R('(일반/간편) 치매담은간병플러스보험', '15년납', 180, 150, { g: 'H' }),
+  R('(일반/간편) 치매담은간병플러스보험', '20년납', 240, null, { g: 'H' }),
+  R('(일반/간편) H건강플러스보험', '', null, 120, { g: 'H' }),
+  R('(일반/간편) 실속가득H치매간병보험', '', 270, null, { g: 'H' }),
+  R('(일반/간편) H치매간병보험', '', 270, null, { g: 'H' }),
+  R('(일반/간편) 밸류플러스보장보험2.0', '5년납', 270, 30),
+  R('(일반) 밸류플러스보장보험2.0', '7년납', 240, 30),
+  R('(간편) 밸류플러스보장보험2.0', '7년납', 240),
+  R('(일반) 밸류플러스보장보험2.0', '10년납', 210, 60),
+  R('(간편) 밸류플러스보장보험2.0', '10년납', 210, 30),
+  R('(일반/간편) H종신보험', '5년납', 240),
+  R('(일반/간편) H종신보험', '7년납', 240),
+  R('(일반/간편) 필요할때 쓰는 종신보험', '10년납', 180, 210),
+  R('(일반/간편) 필요할때 쓰는 종신보험', '12년납', 180, 330),
+  R('[굿리치선지급 10/1~23] (일반/간편) 건강더한종신보험', '7년납', 317),
+  R('(일반) 건강더한종신보험', '10년납', 210, 150),
+  R('(간편) 건강더한종신보험', '10년납', 240, 90),
+  R('(일반/간편) 상속H종신보험', '15년납 이하', 90),
+  R('(일반/간편) 상속H종신보험', '20년납', 120, 90),
+  R('(일반/간편) 하나로H종신보험', '10년납', 150, 90),
+  R('[굿리치선지급] (일반/간편) 하나로H종신보험', '15년납', 400, 100),
+  R('(일반/간편) 하나로H종신보험', '20년납', 150, 210),
+  R('[굿리치선지급] (일반/간편) 경영인H정기보험', '', 250, 200),
+  R('영사모 든든건강플러스보험', '', 60),
+  R('상기외 보장성상품 (연금·저축 제외, 상기 중복지급 없음)', '', 60),
+  X('[추가] 시그니처H암보험 판매활성화 특별지원 (10년납 이상)', '', null, 120, '시그니처H암보험.*10년납 이상'),
+  X('[추가] 치매담은간병플러스 판매활성화 특별지원 (10년납)', '', null, 60, '치매담은간병플러스보험 10년납'),
+  X('[추가] 실속가득H치매간병 판매활성화 특별지원', '', null, 60, '실속가득H치매간병'),
+  X('[추가] H치매간병 판매활성화 특별지원', '', null, 60, '\\) H치매간병'),
+  X('[추가] 밸류플러스보장보험2.0 판매활성화 특별지원 (5/7/10년납)', '', null, 30, '밸류플러스'),
+  X('[추가] H종신 판매활성화 특별지원 (5년납)', '', null, 30, 'H종신보험 5년납'),
+  X('[추가] H종신 판매활성화 특별지원 (7년납 일반)', '', null, 30, 'H종신보험 7년납'),
+  X('[추가] 필요할때 쓰는 종신 판매활성화 특별지원 (10년납)', '', null, 30, '필요할때 쓰는 종신보험 10년납'),
+  X('[추가] 필요할때 쓰는 종신 판매활성화 특별지원 (12년납)', '', null, 60, '필요할때 쓰는 종신보험 12년납'),
+  X('[추가] 건강더한종신 판매활성화 특별지원 (10년납)', '', null, 120, '건강더한종신보험 10년납'),
+  X('[추가] 하나로H종신 판매활성화 특별지원 (10/20년납)', '', null, 150, '하나로H종신보험 (10|20)년납'),
+  X('[추가] H종신 고객 추가 프로모션 (5년납, 월납 150만원 이상)', '', 30, null, 'H종신보험 5년납', { of: 1 })
+], tiers: [], memo: [
+  '13차 시책은 13회차 보험료 입금시 지급(\'27.12월 지급), 지급 이후 13회 도래건은 제외, 유지보장월초 기준',
+  '대표 및 Agent 본인계약(계약자/주피보험자 기준) 제외, 실적 산정시 연납·일시납 등 비월납 실적 제외',
+  '(전환)실손의료·스마트H상해보험·H기업재해보험·튼튼이 치아보험·곰두리보장보험은 숏 프로모션 제외',
+  '납입기간 5년 미만 계약은 실적의 50% 인정'
+] });
+
+CO.push({ id: 'heungkuk', n: '흥국생명', rows: [
+  R('건강상품 · 오든튼5.10.5건강보험', '', 240, null, { g: 'H' }),
+  R('건강상품 · 다사랑3.10.5간편건강보험', '', 240, null, { g: 'H' }),
+  R('건강상품 · 3.10.5.5고당플러스간편건강보험', '', 240, null, { g: 'H' }),
+  R('건강상품 · 기타 (단체·실손·비월납·종신/저축성 제외)', '', 240, null, { g: 'H' }),
+  R('트리플더블업종신보험', '', 240, 420)
+], tiers: [], memo: [
+  '13회차 지급: 13회 유지시 15회차 지급',
+  '시책대상 상품 할인 후 보험료 기준 시책 산정 및 지급, 해당월 신계약 건당 월초 최대 30만원 인정, 표준형 [월초 × 50%] 적용',
+  '단체보험군(기업복지정기보험 등), 실손의료비보험, 비월납 계약 부지급, 종신상품군·저축성상품군 월초 불인정 및 시책비 불지급',
+  '자기계약(계약자·피보험자·수익자 중 1인이라도 설계사 본인·대리점주) 시책비 부지급'
+] });
+
+/* ===== 기간·구간 합산 시책 =====
+   L(라벨, {d:[시작일,종료일], dm:[[..],[..]] 중 최대, x:1 직접입력, u:단위})
+   ONE: 한 구간 기준 (기준, 지급) / TWO: 두 기간 모두 충족해야 하는 연속가동 (기준1, 기준2, 지급) */
+var G = 0.01;
+var L = function (l, o) { return Object.assign({ l: l }, o || {}); };
+var ONE = function (l, ths, pays, o) { return { lg: [L(l, o)], r: ths.map(function (t, i) { return [t, pays[i]]; }) }; };
+var TWO = function (a, b, rows) { return { lg: [a, b], r: rows }; };
+var PR = function (t, per, sets, o) { return Object.assign({ t: t, per: per, sets: Array.isArray(sets) ? sets : [sets], u: '만' }, o || {}); };
+var DIAG = function (ths, pays) { return ths.map(function (t, i) { return [t, t, pays[i]]; }); };
+var MXR = function (th1, th2, cols) { var rows = []; th2.forEach(function (t2, c) { th1.forEach(function (t1, r) { rows.push([t1, t2, cols[c][r]]); }); }); return rows; };
+var M5 = '10월 실적 월초 합산';
+
+var TI = {};
+
+TI.db = [
+  PR('건강보험 팬클럽 시상 (2차년)', '10월', ONE('10월 건강보험 월초 합산', [5, 10, 20, 30, 50, 100], [15, 30, 60, 90, 150, 200]), { m: '건강보험', n: '대상: 생활비 암보험 하이파이브·내가고른 건강·건강100 내가고른 통합·당신곁에 치매간병. 건당 최대 30만원 한도 실적 인정, 표준형은 50% 실적 인정(건당 최대 30만원 한도)' }),
+  PR('조기가동 팬클럽 시상 (2차년)', '10/1~10/18', ONE('10월 건강보험 월초 합산', [5], [10], { d: [1, 18] }), { m: '건강보험' }),
+  PR('건강보험 연속가동 팬클럽 시상 (2차년)', '9월 + 10월', TWO(L('9월 실적', { x: 1 }), L('10월 실적', {}), [[5, 10, 30], [10, 20, 60], [20, 30, 90]]), { m: '건강보험', n: '1구간 9월 5만↑·10월 10만↑ / 2구간 10만↑·20만↑ / 3구간 20만↑·30만↑' }),
+  PR('건강보험 연속가동 팬클럽 시상 (2차년)', '10월 + 11월', TWO(L('10월 실적', {}), L('11월 실적', { x: 1 }), [[5, 10, 30], [10, 20, 60], [20, 30, 90]]), { m: '건강보험', n: '11월 실적은 확정 후 직접 입력' })
+];
+
+TI.kb = [
+  PR('13차 구간 시책', '10월', ONE('10월 월초 합산', [5, 10, 20, 30, 40, 50, 100], [20, 125, 250, 380, 480, 560, 850]), { m: '딱좋은|0540', n: '대상: KB 딱좋은 요즘/플러스 건강보험·초경증 건강보험(무해지형)·간병보험·0540 건강보험. 구간은 10월 실적 월초(CMIP) 합산 기준, 13회차 확정 시점에 유지된 계약만 인정' }),
+  PR('13차 구간 시책 (갱신형 추가 시상)', '10월', ONE('10월 갱신형 월초 합산', [5, 10, 20, 30], [10, 25, 50, 70]), { m: '요즘건강보험 갱신형', n: '대상: KB 딱좋은 요즘건강보험(무해지형)의 갱신형. 상품 목록에서 ‘요즘건강보험 갱신형’을 고른 계약만 합산' }),
+  PR('건강보험 전략담보 추가 시책', '10월', ONE('10월 전략담보 포함 계약 월초 합산', [5, 10, 20, 30], [1, 3, 5, 10]), { m: '딱좋은|0540', n: '전략담보 특약보험료 합계가 전체 보험료의 30% 이상 또는 3만원 이상인 계약만 합산' })
+];
+
+TI.kdb = [
+  PR('건강보험 다건 시상', '10월', ONE('동일 상품 계약 건수', [2, 3, 5], [60, 90, 120], { x: 1, u: '건' }), { u: '%', m: '해약환급금', n: '건수를 직접 입력하세요. 보험료 3만원 이상 건만 인정, 표준형 제외. 지급률(%)은 해당 건강보험 월초 합산에 곱해 계산합니다' })
+];
+
+TI.im = [
+  PR('Active Care 10년납 구간시상', '10월', ONE(M5, [5, 10], [120, 240]), { u: '%', m: 'Active Care.*10년납', n: '구간 달성 시 지급률(%)을 월초 합산에 곱해 계산하는 방식으로 읽었습니다' }),
+  PR('Active Care 15년납 구간시상', '10월', ONE(M5, [5, 10, 20], [180, 300, 420]), { u: '%', m: 'Active Care.*15년납' }),
+  PR('Active Care 20년납 구간시상', '10월', ONE(M5, [5, 10, 20, 30], [210, 360, 480, 600]), { u: '%', m: 'Active Care.*20년납' }),
+  PR('Active Care 30년납 구간시상', '10월', ONE(M5, [5, 10, 20, 30, 40], [240, 420, 540, 720, 840]), { u: '%', m: 'Active Care.*30년납' })
+];
+
+TI.nh = [];
+
+TI.dongyang = [
+  PR('설계사 건강보험 주간마감 구간프로모션 (13회차)', '10/1~10/16', ONE(M5, [10, 20, 30, 50, 70], [50, 95, 145, 240, 335], { d: [1, 16] }), { m: '(치매간병|하는보장보험|쑥쑥어린이)(?!.*표준)', n: '대상: 치매간병·보장보험·쑥쑥어린이보험. 저/무해지형에 한함' }),
+  PR('설계사 건강보험 주간마감 구간프로모션 (13회차)', '10/17~10/31', ONE(M5, [10, 20, 30, 50, 70], [50, 95, 145, 240, 335], { d: [17, 31] }), { m: '(치매간병|하는보장보험|쑥쑥어린이)(?!.*표준)', n: '저/무해지형에 한함' }),
+  PR('설계사 건강보험 월마감 구간프로모션 (13회차)', '10월', ONE(M5, [15, 30, 50, 70, 100], [90, 215, 360, 505, 720]), { m: '(치매간병|하는보장보험|쑥쑥어린이)(?!.*표준)', n: '저/무해지형에 한함' })
+];
+
+TI.lina = [
+  PR('건강보험 가동 시책', '10월', ONE('10월 건강보험 월초 합산', [5, 10, 20, 30], [10, 25, 60, 110]), { m: '건강보험', n: '치아·치매·암 대상, 치아5년납·치매기본형 제외' }),
+  PR('통합건강 가동 시책', '10월', ONE('10월 통합건강 월초 합산', [5, 10, 20, 30], [25, 85, 190, 325]), { m: '건강보험', n: '대상: 새로담는(간편)건강보험·새로담는건강보험플러스·브레인케어건강보험. 통합건강 보험료만 직접 맞춰 입력하세요' }),
+  PR('통합건강 연속 가동 시책', '9월 + 10월', [
+    TWO(L('9월 실적', { x: 1 }), L('10월 실적', {}), [[5, 5, 5], [5, 10, 10], [5, 20, 35], [5, 30, 55]]),
+    ONE('10월 실적', [10, 15, 30, 45], [5, 10, 35, 55])
+  ], { m: '건강보험', n: '9월 5만↑이면 10월 5/10/20/30만↑, 9월 미달이면 10월 10/15/30/45만↑ 기준. 두 구간 중 높은 지급액만 적용합니다' })
+];
+
+TI.mirae = [
+  PR('13회차 구간 시책', '10월', ONE('10월 실적 월초 합산', [5, 10, 20, 30, 50, 70, 100, 150, 200], [15, 120, 280, 445, 645, 735, 855, 1655, 2855]), { m: '무해지|갱신|걱정없는|M-케어 치매간병', n: '대상: M-케어건강(무해지·갱신), 3.10.5건강, 0세부터건강, 치매간병(무해지), 암 걱정없는 암치료. 비월납 제외. 구간은 10월 실적 월초 합산 기준이며, 13회차까지 유지된 계약만 인정' })
+];
+
+TI.samsung = [
+  PR('건강상해 13회 구간별 프로모션', '10/1~10/18', ONE(M5, [G, 5, 10, 20, 30, 50, 100], [5, 15, 30, 60, 90, 150, 300], { d: [1, 18] }), { m: 'THE라이트A|1540|4180|가족대표', n: '본인계약·유해지형 제외, 10년납 이하는 월초 50% 인정' }),
+  PR('건강상해 13회 구간별 프로모션', '10/19~10/31', ONE(M5, [G, 5, 10, 20, 30, 50, 100], [3, 5, 10, 25, 35, 60, 120], { d: [19, 31] }), { m: 'THE라이트A|1540|4180|가족대표', n: '본인계약·유해지형 제외, 10년납 이하는 월초 50% 인정' }),
+  PR('10월 1~2주차 & 3~4주차 연속가동 건강상해', '10/1~18 + 10/19~31', TWO(L('10/1~18', { d: [1, 18] }), L('10/19~31', { d: [19, 31] }), [[G, G, 5], [5, 5, 10], [5, 10, 30]]), { m: 'THE라이트A|1540|4180|가족대표', n: '두 기간 모두 가동해야 지급. 원문 표기가 간략해 (양 기간 가동 5만 / 양 기간 5만↑ 10만 / 1기간 5만↑·2기간 10만↑ 30만)으로 읽었습니다. 기간별 인별합산, 10년납 이하는 월초 50% 인정' }),
+  PR('주력담보활성화 13회 구간별 프로모션', '10/1~10/18', ONE('10월 주력담보 부가 건 월초 합산', [G, 5, 10, 20, 30, 50], [10, 30, 60, 120, 180, 300], { x: 1 }), { n: '주력담보가 부가된 건만 직접 합산해 입력하세요. 기간별 별도 진행, 본인계약·유해지형 제외' }),
+  PR('주력담보활성화 13회 구간별 프로모션', '10/19~10/31', ONE('10월 주력담보 부가 건 월초 합산', [G, 5, 10, 20, 30, 50], [5, 15, 30, 60, 90, 150], { x: 1 }), { n: '주력담보가 부가된 건만 직접 합산해 입력하세요. 기간별 별도 진행' }),
+  PR('연속가동 건강상해 13회 프로모션', '9/14~30 + 10/1~11', TWO(L('9/14~30 실적', { x: 1 }), L('10/1~11', { d: [1, 11] }), MXR([10, 20, 30, 50], [5, 10], [[30, 60, 85, 130], [60, 90, 120, 180]])), { m: 'THE라이트A|1540|4180|가족대표', n: '9/14~30 구간은 10/20/30/50만↑, 10/1~11이 5만↑이면 앞 줄, 10만↑이면 뒤 줄 지급액' }),
+  PR('연속가동 건강상해 13회 프로모션', '10/12~31 + 11/1~15', TWO(L('10/12~31', { d: [12, 31] }), L('11/1~15 실적', { x: 1 }), MXR([G, 10, 20, 30, 50], [5, 10], [[3, 30, 60, 85, 130], [5, 60, 90, 120, 180]])), { m: 'THE라이트A|1540|4180|가족대표', n: '10/12~31은 가동시/10/20/30/50만↑, 11/1~15가 5만↑이면 앞 줄, 10만↑이면 뒤 줄 지급액. 11월 실적은 직접 입력' })
+];
+
+TI.shinhan = [
+  PR('건강프로모션 1주차', '10/1~10/11', ONE(M5, [7, 15, 25, 40, 60], [40, 90, 180, 290, 430], { d: [1, 11] }), { m: '통합건강ONE|슈퍼ONE|라이트ONE|케어받는암', n: '대상: 통합건강ONE(경 포함)·슈퍼ONE·라이트ONE·라이트ONE고당지알파·케어받는암' }),
+  PR('건강프로모션 2주차', '10/12~10/18', ONE(M5, [7, 15, 25, 40, 60], [35, 90, 150, 240, 360], { d: [12, 18] }), { m: '통합건강ONE|슈퍼ONE|라이트ONE|케어받는암' }),
+  PR('건강프로모션 2주차 추가연속시상', '10/1~11 + 10/12~18', TWO(L('1주차', { d: [1, 11] }), L('2주차', { d: [12, 18] }), [[7, 7, 10], [7, 15, 20], [7, 25, 30], [7, 40, 50], [7, 60, 70]]), { m: '통합건강ONE|슈퍼ONE|라이트ONE|케어받는암', n: '조건: 1주차 7만↑ 가동' }),
+  PR('건강프로모션 3주차', '10/19~10/25', ONE(M5, [7, 15, 25, 40, 60], [35, 90, 150, 240, 360], { d: [19, 25] }), { m: '통합건강ONE|슈퍼ONE|라이트ONE|케어받는암' }),
+  PR('건강프로모션 3주차 추가연속시상', '10/19~25 (1·2주차 연계)', TWO(L('1주차 또는 2주차 중 높은 실적', { dm: [[1, 11], [12, 18]] }), L('3주차', { d: [19, 25] }), [[7, 7, 10], [7, 15, 20], [7, 25, 30], [7, 40, 50], [7, 60, 70]]), { m: '통합건강ONE|슈퍼ONE|라이트ONE|케어받는암', n: '조건: 1주차 7만↑ 또는 2주차 7만↑ 가동 (1·2주차 합산은 불인정)' }),
+  PR('건강프로모션 4주차', '10/26~10/31', ONE(M5, [7, 15, 25, 40, 60], [25, 55, 120, 190, 290], { d: [26, 31] }), { m: '통합건강ONE|슈퍼ONE|라이트ONE|케어받는암' }),
+  PR('건강프로모션 9~10월 집중 가동', '9/21~30 + 10/1~11', TWO(L('9/21~30 실적', { x: 1 }), L('10/1~11', { d: [1, 11] }), [[7, 5, 15], [15, 5, 25], [25, 5, 35]]), { m: '통합건강ONE|슈퍼ONE|라이트ONE|케어받는암', n: '9/21~30 구간 7/15/25만↑, 10/1~11 5만↑' }),
+  PR('건강프로모션 10~11월 집중 가동', '10/26~31 + 11/1~8', TWO(L('10/26~31', { d: [26, 31] }), L('11/1~8 실적', { x: 1 }), [[7, 5, 15], [15, 5, 25], [25, 5, 35]]), { m: '통합건강ONE|슈퍼ONE|라이트ONE|케어받는암', n: '10/26~31 구간 7/15/25만↑, 11/1~8 5만↑' }),
+  PR('건강프로모션 9~10월 연속 가동', '9/14~30 + 10/1~18', TWO(L('9/14~30 실적', { x: 1 }), L('10/1~18', { d: [1, 18] }), [[7, 7, 25], [15, 7, 40], [25, 7, 60]]), { m: '통합건강ONE|슈퍼ONE|라이트ONE|케어받는암', n: '9/14~30 구간 7/15/25만↑, 10/1~18 7만↑' }),
+  PR('건강프로모션 10~11월 연속 가동', '10/19~31 + 11/1~15', TWO(L('10/19~31', { d: [19, 31] }), L('11/1~15 실적', { x: 1 }), [[7, 7, 25], [15, 7, 40], [25, 7, 60]]), { m: '통합건강ONE|슈퍼ONE|라이트ONE|케어받는암', n: '10/19~31 구간 7/15/25만↑, 11/1~15 7만↑' }),
+  PR('건강프로모션 전략담보 30% 이상 추가 건별', '10월', ONE('전략담보 포함 건 중 최고 건별 월초', [5, 10], [5, 10], { x: 1 }), { n: '전략담보 30% 이상 또는 전략담보 CMIP 합산 3만원 이상 건. 피보험자 1명당 최고 구간 1건 한(10/1~31), 직접 입력' })
+];
+
+TI.fubon = [
+  PR('Final Quarter Boost-up 조기가동 지원', '10/1~10/13', ONE(M5, [10, 20, 30, 50, 100], [5, 10, 20, 30, 60], { d: [1, 13] }), { m: '스마트픽|원픽|마이픽|탑픽|MAX 연금다운', n: '대상: 스마트픽·원픽·마이픽·탑픽Ⅱ·MAX 연금다운(1형 보증비용 부과형). 기간 중 가동 인당 합산보험료 구간별' }),
+  PR('Core 상품 판매활성화 지원', '10월', ONE(M5, [10, 20, 30, 50, 70, 100, 200, 300, 500, 1000], [15, 30, 50, 85, 120, 190, 390, 600, 1080, 2400]), { m: '스마트픽|원픽|마이픽|탑픽', n: '대상: 스마트픽·원픽·마이픽·탑픽Ⅱ 합산 구간별 차등지원' }),
+  PR('Core 상품 판매활성화 지원 (연금다운연금보험)', '10월', ONE(M5, [20, 30, 50, 70, 100, 200, 300, 500], [25, 35, 70, 120, 180, 360, 540, 900]), { m: 'MAX 연금다운', n: '대상: MAX 연금다운 연금보험(1형 보증비용 부과형). 2형 보증비용 미부과형은 제외' }),
+  PR('4Q 법인영업 판매활성화 지원 (경영인정기)', '10월', ONE(M5, [300, 500, 1000], [90, 150, 300]), { m: '탑픽', n: '대상: 탑픽Ⅱ 합산 구간별 차등지원' })
+];
+
+TI.hana = [
+  PR('건강보험 판매활성화 시책 (13회차)', '10월', ONE(M5, [10, 20, 30, 50, 70], [60, 120, 180, 300, 420]), { m: '누리는|라이트3.10.5', n: '대상: 하나로라이트3.10.5간편건강보험·하나로누리는건강보험. 표준형 50% 인정, 10년납 이하 비갱신형 50% 인정' }),
+  PR('건강보험 주요특약 가입 시책', '10월', ONE('건당 최고 보험료', [10, 20], [20, 35], { x: 1 }), { n: '하나로누리는건강보험(일반심사형)의 필수 가입특약 중 1개 이상 포함 건. 동일 피보험자 다건 계약 시 최대 구간 1건만 인정, 직접 입력' }),
+  PR('연속가동 프로모션', '9월 + 10월', TWO(L('9월 실적', { x: 1 }), L('10월 실적', {}), [[5, 10, 25], [5, 20, 50], [5, 30, 70], [5, 50, 120], [5, 70, 170]]), { m: '누리는|라이트3.10.5', n: '9월 5만원 이상 달성자에 한해 10월 해당 구간 지급 (9월 지급기준 달성자)' })
+];
+
+TI.hanwha = [
+  PR('건강보험 시그니처 특별 프로모션 (13회 구간)', '10/1~10/25', ONE(M5, [10, 20, 30, 50, 70, 100], [40, 85, 125, 210, 295, 420], { d: [1, 25] }), { m: '실속가득H통합|시그니처H통합', n: '대상: 실속가득H통합·시그니처H통합. 납입기간 5년 미만은 실적의 50% 인정' }),
+  PR('건강보험 시그니처 특별 프로모션 (13회 구간)', '10/26~10/31', ONE(M5, [10, 20, 30, 50, 70, 100], [30, 60, 90, 150, 210, 300], { d: [26, 31] }), { m: '실속가득H통합|시그니처H통합' }),
+  PR('건강보험 시그니처 연속가동 프로모션 (13회 구간)', '10/1~10/25', TWO(L('9월 시그니처·실속가득 합산 보장월초', { x: 1 }), L('10/1~25', { d: [1, 25] }), [[10, 10, 35], [10, 20, 70], [10, 30, 110], [10, 50, 180], [10, 70, 250], [10, 100, 420]]), { m: '실속가득H통합|시그니처H통합', n: '조건: 9월 시그니처H통합·실속가득H통합 합산 보장월초 10만 이상 달성자' }),
+  PR('건강보험 시그니처 연속가동 프로모션 (13회 구간)', '10/26~10/31', TWO(L('9월 시그니처·실속가득 합산 보장월초', { x: 1 }), L('10/26~31', { d: [26, 31] }), [[10, 10, 25], [10, 20, 50], [10, 30, 70], [10, 50, 120], [10, 70, 170], [10, 100, 240]]), { m: '실속가득H통합|시그니처H통합', n: '조건: 9월 합산 보장월초 10만 이상 달성자' }),
+  PR('이글스 멤버십 프로모션 (13회 구간)', '10/1~10/25', TWO(L('직전 3개월 중 최소 한달 월초', { x: 1 }), L('10/1~25', { d: [1, 25] }), [[5, 10, 20], [5, 20, 35], [5, 30, 65], [5, 50, 120], [5, 70, 170], [5, 100, 240]]), { m: '실속가득H통합|시그니처H통합', n: '조건: 직전 3개월(26.7~26.9) 중 최소 한달 시그니처H통합(본인계약 제외)·실속가득H통합(본인계약 포함) 합산 월초 5만↑. 월간 합산이며 누계합산 아님' })
+];
+
+TI.heungkuk = [
+  PR('전략상품 특별시책 (13회차)', '10월', ONE(M5, [10, 20, 30, 50, 70, 100], [30, 60, 90, 150, 210, 300]), { m: '오든튼|다사랑|고당플러스', n: '대상: 오든튼5.10.5건강보험·다사랑3.10.5간편건강보험·3.10.5.5고당플러스간편건강보험' }),
+  PR('주간가동 시책 1주차', '10/1~10/11', ONE(M5, [10, 20, 30, 50, 70, 100], [30, 60, 90, 180, 250, 420], { d: [1, 11] }), { m: '건강상품' }),
+  PR('주간가동 시책 2~3주차', '10/12~10/25', ONE(M5, [10, 20, 30, 50, 70, 100], [25, 50, 70, 150, 210, 360], { d: [12, 25] }), { m: '건강상품' }),
+  PR('주간가동 시책 4주차', '10/26~10/31', ONE(M5, [10, 20, 30, 50, 70, 100], [5, 10, 20, 30, 85, 120], { d: [26, 31] }), { m: '건강상품' }),
+  PR('건강보험 10~11월 연속가동 시책', '10/26~31 + 11/1~6', TWO(L('10/26~31', { d: [26, 31] }), L('11/1~6 실적', { x: 1 }), DIAG([5, 10, 20, 30, 50, 70, 100], [20, 35, 70, 110, 300, 420, 600])), { m: '건강상품', n: '두 기간 모두 같은 구간 이상. 10월 지급기준 달성자에 한해 11월 해당 구간 지급' }),
+  PR('건강보험 9~10월 연속가동 시책', '9/21~30 + 10/1~8', TWO(L('9/21~30 실적', { x: 1 }), L('10/1~8', { d: [1, 8] }), DIAG([10, 20, 30, 50, 70, 100], [35, 70, 110, 300, 420, 600])), { m: '건강상품', n: '9월 지급기준 달성자에 한해 10월 해당 지급기준 달성 시 해당 금액 지급' }),
+  PR('건강보험 연속가동 추가 프로모션 (13회차 시책)', '9/28~30 + 10/1~16', TWO(L('9/28~30 실적', { x: 1 }), L('10/1~16', { d: [1, 16] }), DIAG([5, 10, 20, 30, 50, 70, 100], [20, 35, 70, 110, 300, 420, 600])), { m: '건강상품', n: '9월 지급기준 달성자에 한해 10월 해당 지급기준 달성 시 해당 금액 지급' }),
+  PR('핑크 멤버스 클럽 시책', '9월 + 10월', TWO(L('9월 실적', { x: 1 }), L('10월 실적', {}), [[10, 10, 40], [10, 20, 75], [10, 30, 110], [10, 50, 180], [10, 70, 245], [10, 100, 350]]), { m: '건강상품', n: '9월 10만↑ 달성자에 한해 10월 구간 지급' }),
+  PR('트리플더블업종신보험 골드바 추가시책 (13회차)', '10월', ONE('10월 트리플더블업종신 월초 합산', [15, 30, 45, 60, 75], [0.5, 1, 1.5, 2, 2.5]), { u: '돈', m: '트리플더블업', n: '골드바 정산시점 한국금거래소 1돈(3.75g)당 구입단가가 90만원 초과 시 90만원 현금으로 책정해 현금 지급(선택 불가)' })
+];
+
+CO.forEach(function (c) { c.tiers = TI[c.id] || []; });
+
+/* ===== 계산 로직 (DOM 없음) ===== */
+var EPS = 1e-9;
+var RXC = {};
+function rx(s) { return RXC[s] || (RXC[s] = new RegExp(s)); }
+function hay(r) { return r.n + ' ' + (r.t || '') + ' ' + (r.g || ''); }
+function coById(id) { for (var i = 0; i < CO.length; i++) if (CO[i].id === id) return CO[i]; return null; }
+function baseIdx(D) { var o = []; D.rows.forEach(function (r, i) { if (!r.ad) o.push(i); }); return o; }
+function num(v) { var x = parseFloat(v); return isFinite(x) ? x : 0; }
+
+/* 기간·상품 조건에 맞는 월초 합산(만원). 일시납은 제외 */
+function sumItems(D, items, m, d) {
+  var lo = d ? d[0] : 1, hi = d ? d[1] : 31, re = m ? rx(m) : null, t = 0;
+  items.forEach(function (it) {
+    var r = D.rows[it.ri]; if (!r || r.ls) return;
+    var day = it.d == null || it.d === '' ? 31 : num(it.d);
+    if (day < lo || day > hi) return;
+    if (re && !re.test(hay(r))) return;
+    t += it.h ? it.p / 2 : it.p;
+  });
+  return t;
+}
+
+function legValue(D, st, items, prog, key, leg) {
+  if (leg.x) { var mv = num(st.man && st.man[key]); return leg.u === '건' ? mv : mv / 10000; } /* 직접 입력은 원 단위(건수 제외) */
+  if (leg.dm) { var mx = 0; leg.dm.forEach(function (d) { mx = Math.max(mx, sumItems(D, items, prog.m, d)); }); return mx; }
+  return sumItems(D, items, prog.m, leg.d || null);
+}
+
+/* 한 세트(구간표) 평가: 충족한 행 중 최대 지급 */
+function evalSet(set, vals) {
+  var best = -1, pay = 0;
+  set.r.forEach(function (row, i) {
+    var ok = vals[0] >= row[0] - EPS;
+    var p = row[row.length - 1];
+    if (row.length === 3) ok = ok && vals[1] >= row[1] - EPS;
+    if (ok && p > pay) { pay = p; best = i; }
+  });
+  return { pay: pay, row: best };
+}
+
+function compute(state) {
+  var out = { cos: [], first: 0, later: 0, prog: 0, total: 0, gold: 0 };
+  state.cos.forEach(function (st) {
+    var D = coById(st.id); if (!D) return;
+    var items = (st.items || []).map(function (it) { return { ri: it.ri, p: Math.max(0, num(it.p)) / 10000, d: it.d, h: !!it.h }; /* 입력은 원, 계산은 만원 */ }).filter(function (it) { return it.p > 0 && D.rows[it.ri]; });
+    var c = { id: D.id, n: D.n, lines: [], adds: [], progs: [], m1: 0, m13: 0, m25: 0, prog: 0, gold: 0, total: 0, base: 0 };
+    items.forEach(function (it) {
+      var r = D.rows[it.ri];
+      var a1 = r.i == null ? 0 : it.p * r.i / 100, a13 = r.a == null ? 0 : it.p * r.a / 100, a25 = r.b == null ? 0 : it.p * r.b / 100;
+      c.lines.push({ ri: it.ri, row: r, p: it.p, d: it.d, a1: a1, a13: a13, a25: a25 });
+      c.m1 += a1; c.m13 += a13; c.m25 += a25;
+      if (!r.ls) c.base += it.p;
+    });
+    D.rows.forEach(function (x, xi) {
+      if (!x.ad) return;
+      var on = st.ad && st.ad[xi] != null ? !!st.ad[xi] : !x.of;
+      var re = rx(x.m), base = 0;
+      items.forEach(function (it) { if (re.test(hay(D.rows[it.ri]))) base += it.p; });
+      var a1 = x.i == null ? 0 : base * x.i / 100, a13 = x.a == null ? 0 : base * x.a / 100;
+      c.adds.push({ xi: xi, row: x, on: on, base: base, a1: a1, a13: a13 });
+      if (on && base > 0) { c.m1 += a1; c.m13 += a13; }
+    });
+    D.tiers.forEach(function (prog, pi) {
+      var sets = prog.sets.map(function (set, si) {
+        var vals = set.lg.map(function (leg, li) { return legValue(D, st, items, prog, pi + '.' + si + '.' + li, leg); });
+        var ev = evalSet(set, vals);
+        return { set: set, vals: vals, pay: ev.pay, row: ev.row };
+      });
+      var bi = -1, bp = 0;
+      sets.forEach(function (s, i) { if (s.pay > bp) { bp = s.pay; bi = i; } });
+      var amt = 0;
+      if (bp > 0) {
+        if (prog.u === '%') amt = bp * sumItems(D, items, prog.m, null) / 100;
+        else amt = bp;
+      }
+      c.progs.push({ prog: prog, pi: pi, sets: sets, best: bi, pay: bp, amt: amt });
+      if (prog.u === '돈') c.gold += amt; else c.prog += amt;
+    });
+    c.later = c.m13 + c.m25;
+    c.total = c.m1 + c.later + c.prog;
+    c.has = items.length > 0;
+    out.cos.push(c);
+    out.first += c.m1; out.later += c.later; out.prog += c.prog; out.gold += c.gold;
+  });
+  out.total = out.first + out.later + out.prog;
+  return out;
+}
+
+</script>
+<script>
+(function () {
+  var KEY = 'life-sichaek-2610.v2', OLD = 'life-sichaek-2610.v1';
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function f1(x) { if (!x || Math.abs(x) < 1e-9) return '0'; var r = Math.round(x * 10) / 10; return r.toLocaleString('ko-KR', { maximumFractionDigits: 1 }); }
+  function man(x) { return f1(x) + '만'; }
+  function pc(x) { return (Math.round(x * 100) / 100) + '%'; }
+  function wonHint(v) { var x = parseFloat(v); if (!isFinite(x) || x <= 0) return '원 단위로 입력'; return Math.round(x).toLocaleString('ko-KR') + '원'; }
+  function wn(x) { return Math.round((x || 0) * 10000).toLocaleString('ko-KR'); } /* 만원 → 원 표기 */
+  function won(x) { return wn(x) + '원'; }
+  function thL(t, u) { return t === G ? '가동시' : u === '건' ? t + '건↑' : won(t) + '↑'; }
+  function today() { var d = new Date(); return d.getMonth() === 9 ? d.getDate() : 31; }
+  function findRi(id, sub, t) { var D = coById(id); for (var i = 0; i < D.rows.length; i++) { var r = D.rows[i]; if (!r.ad && r.n.indexOf(sub) >= 0 && (!t || r.t.indexOf(t) >= 0)) return i; } return baseIdx(D)[0]; }
+
+  function sample() {
+    return { sample: true, open: {}, cos: [
+      { id: 'samsung', items: [{ ri: findRi('samsung', 'THE라이트A', '이하'), p: 120000, d: 6, h: true }, { ri: findRi('samsung', '1540', '초과'), p: 80000, d: 20 }], man: {}, ad: {} },
+      { id: 'hanwha', items: [{ ri: findRi('hanwha', '실속가득H통합보험(보장통장)'), p: 150000, d: 12 }, { ri: findRi('hanwha', '시그니처H암보험', '이상'), p: 60000, d: 22 }], man: { '2.0.0': 120000 }, ad: {} },
+      { id: 'shinhan', items: [{ ri: findRi('shinhan', '슈퍼ONE'), p: 80000, d: 3 }, { ri: findRi('shinhan', '케어받는암'), p: 160000, d: 14 }], man: {}, ad: {} }
+    ] };
+  }
+  var S;
+  try { S = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { S = null; }
+  if (!S) { /* 이전 버전(만원 입력) 값을 원으로 옮김 */
+    try { var o = JSON.parse(localStorage.getItem(OLD) || 'null'); if (o && Array.isArray(o.cos)) { o.cos.forEach(function (c) { (c.items || []).forEach(function (it) { if (it.p !== '' && it.p != null) it.p = Math.round(parseFloat(it.p) * 10000) || ''; }); Object.keys(c.man || {}).forEach(function (k) { var D = coById(c.id), a = k.split('.'), l = D && D.tiers[a[0]] && D.tiers[a[0]].sets[a[1]] && D.tiers[a[0]].sets[a[1]].lg[a[2]]; if (l && l.u !== '건' && c.man[k] !== '') c.man[k] = Math.round(parseFloat(c.man[k]) * 10000) || ''; }); }); S = o; } } catch (e) {}
+  }
+  if (!S || !Array.isArray(S.cos)) S = sample();
+  S.cos = S.cos.filter(function (c) { return coById(c.id); });
+  S.open = S.open || {};
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+  function stOf(id) { for (var i = 0; i < S.cos.length; i++) if (S.cos[i].id === id) return S.cos[i]; return null; }
+
+  /* ---------- 입력 ---------- */
+  function optLabel(r) {
+    var p = [];
+    if (r.i != null) p.push('익월 ' + pc(r.i));
+    if (r.a != null) p.push('13회 ' + pc(r.a));
+    if (r.b != null) p.push('25회 ' + pc(r.b));
+    return r.n + (r.t ? ' · ' + r.t : '') + (p.length ? '  (' + p.join(' / ') + ')' : '');
+  }
+  function rateHtml(r) {
+    var s = [];
+    if (r.ls) s.push('일시납 보험료 × <b>' + pc(r.i) + '</b>');
+    else {
+      if (r.i != null) s.push('익월 <b>' + pc(r.i) + '</b>');
+      if (r.a != null) s.push('13회차 <i>' + pc(r.a) + '</i>');
+      if (r.b != null) s.push('25회차 <i>' + pc(r.b) + '</i>');
+    }
+    return s.join(' · ') || '지급률 없음';
+  }
+  function manLegs(D) {
+    var o = [];
+    D.tiers.forEach(function (p, pi) { p.sets.forEach(function (s, si) { s.lg.forEach(function (l, li) { if (l.x) o.push({ key: pi + '.' + si + '.' + li, p: p, l: l }); }); }); });
+    return o;
+  }
+  function itemHtml(D, it, k) {
+    var opts = baseIdx(D).map(function (i) { return '<option value="' + i + '"' + (i === +it.ri ? ' selected' : '') + '>' + esc(optLabel(D.rows[i])) + '</option>'; }).join('');
+    var r = D.rows[it.ri] || {};
+    var uid = D.id + '-' + k;
+    return '<div class="it" data-co="' + D.id + '" data-k="' + k + '">' +
+      '<div class="fld full"><label for="ri-' + uid + '">상품 · 납기</label><select id="ri-' + uid + '" data-f="ri">' + opts + '</select></div>' +
+      '<div class="rate full" data-rate>' + rateHtml(r) + '</div>' +
+      '<div class="fld"><label for="p-' + uid + '">' + (r.ls ? '일시납 보험료(원)' : '월초(원)') + '</label><input id="p-' + uid + '" type="number" inputmode="numeric" min="0" step="1" data-f="p" value="' + esc(it.p) + '"><span class="lbl" data-won>' + wonHint(it.p) + '</span></div>' +
+      '<div class="fld"><label for="d-' + uid + '">체결일 (10월 일)</label><input id="d-' + uid + '" type="number" inputmode="numeric" min="1" max="31" step="1" data-f="d" value="' + esc(it.d) + '"></div>' +
+      '<button class="rm" type="button" data-act="rm-it" aria-label="이 상품 삭제">삭제</button>' +
+      '<label class="chk full"><input type="checkbox" data-f="h"' + (it.h ? ' checked' : '') + '>구간 실적 50% 인정 (표준형·10년납 이하·5년납 미만 등 원문 조건 해당 시)</label>' +
+      '</div>';
+  }
+  function renderInputs() {
+    var html = S.cos.map(function (st) {
+      var D = coById(st.id);
+      var ml = manLegs(D);
+      var mh = ml.length ? '<details class="man"' + (S.open['man:' + D.id] ? ' open' : '') + ' data-open="man:' + D.id + '"><summary>9월·11월 실적 등 직접 입력 (' + ml.length + ')</summary><div class="man-g">' +
+        ml.map(function (m) { var id = 'm-' + D.id + '-' + m.key.replace(/\./g, '-'); return '<div class="fld"><label for="' + id + '">' + esc(m.p.t) + ' · ' + esc(m.l.l) + ' (' + (m.l.u || '원') + ')</label><input id="' + id + '" type="number" inputmode="numeric" min="0" step="1" data-co="' + D.id + '" data-man="' + m.key + '" value="' + esc(st.man && st.man[m.key] != null ? st.man[m.key] : '') + '"></div>'; }).join('') +
+        '</div></details>' : '';
+      return '<div class="in-co"><div class="in-h"><b>' + esc(D.n) + '</b><button class="rm" type="button" data-act="rm-co" data-co="' + D.id + '">보험사 삭제</button></div>' +
+        st.items.map(function (it, k) { return itemHtml(D, it, k); }).join('') +
+        '<button class="btn sm ghost" type="button" data-act="add-it" data-co="' + D.id + '">＋ ' + esc(D.n) + ' 상품 추가</button>' + mh + '</div>';
+    }).join('');
+    $('inputs').innerHTML = html;
+    $('in-empty').hidden = S.cos.length > 0;
+    $('sample').hidden = !S.sample;
+    var left = CO.filter(function (c) { return !stOf(c.id); });
+    $('picker').innerHTML = left.map(function (c) { return '<button class="chip" type="button" data-pick="' + c.id + '">' + esc(c.n) + '</button>'; }).join('');
+    $('btn-add').disabled = !left.length;
+  }
+
+  /* ---------- 결과 ---------- */
+  function setTable(set, run, prog) {
+    var two = set.lg.length === 2, u = prog.u;
+    var payL = function (p) { return u === '%' ? pc(p) : u === '돈' ? p + '돈' : won(p); };
+    var head = two ? '<tr><th>' + esc(set.lg[0].l) + '</th><th>' + esc(set.lg[1].l) + '</th><th>지급</th></tr>' : '<tr><th>' + esc(set.lg[0].l) + '</th><th>지급</th></tr>';
+    var body = set.r.map(function (row, i) {
+      var cells = two ? '<td>' + thL(row[0], set.lg[0].u) + '</td><td>' + thL(row[1], set.lg[1].u) + '</td>' : '<td>' + thL(row[0], set.lg[0].u) + '</td>';
+      return '<tr' + (i === run.row ? ' class="hit"' : '') + '>' + cells + '<td class="pay">' + payL(row[row.length - 1]) + '</td></tr>';
+    }).join('');
+    return '<div class="tw"><table class="tt">' + head + body + '</table></div>';
+  }
+  function gapHint(pg) {
+    if (pg.sets.length !== 1) return '';
+    var s = pg.sets[0]; if (s.set.lg.length !== 1 || s.set.lg[0].x) return '';
+    var v = s.vals[0];
+    for (var i = 0; i < s.set.r.length; i++) {
+      var t = s.set.r[i][0];
+      if (t > v + 1e-9) return '<span class="why">다음 구간 ' + thL(t, s.set.lg[0].u) + '까지 ' + won(t - v) + ' 더</span>';
+    }
+    return '<span class="why">최고 구간 달성</span>';
+  }
+  function progHtml(c, pg) {
+    var p = pg.prog;
+    var vals = [];
+    pg.sets.forEach(function (s, si) { s.set.lg.forEach(function (l, li) {
+      var lab = l.l + (l.x ? ' (직접 입력)' : '');
+      var k = lab + '|' + s.vals[li];
+      if (vals.indexOf(k) < 0) vals.push(k);
+    }); });
+    var vh = vals.map(function (k) { var a = k.split('|'); return '<span>' + esc(a[0]) + ' <b>' + (/건수/.test(a[0]) ? f1(+a[1]) + '건' : won(+a[1])) + '</b></span>'; }).join('');
+    var tabs = pg.sets.map(function (s, si) { return (pg.sets.length > 1 ? '<div class="lbl">' + (si === 0 ? '조건 ①' : '조건 ②') + '</div>' : '') + setTable(s.set, s, p); }).join('');
+    var res;
+    if (pg.pay > 0) {
+      if (p.u === '%') res = '<span>적용 ' + pc(pg.pay) + ' × 대상 월초</span><b>' + won(pg.amt) + '</b>';
+      else if (p.u === '돈') res = '<span>적용</span><span class="gold">골드바 ' + pg.amt + '돈</span>';
+      else res = '<span>적용</span><b>' + won(pg.amt) + '</b>';
+    } else res = '<span class="why">미달</span>';
+    return '<div class="pg"><div class="pg-h"><span class="pg-t">' + esc(p.t) + '</span><span class="per">' + esc(p.per) + '</span></div>' +
+      '<div class="meta">구간 기준: ' + esc(p.per) + ' 신계약 월초 합산 (그 기간 실적, 1년 납입 보험료 아님) · 13회차 유지 시 지급</div>' +
+      (p.n ? '<div class="meta">' + esc(p.n) + '</div>' : '') +
+      '<div class="vals">' + vh + '</div>' + '<div class="tts">' + tabs + '</div>' +
+      '<div class="res">' + res + gapHint(pg) + '</div></div>';
+  }
+  function refHtml(D) {
+    var rows = baseIdx(D).map(function (i) { var r = D.rows[i]; return '<tr><td>' + esc(r.n) + (r.t ? '<small>' + esc(r.t) + '</small>' : '') + '</td><td>' + (r.i == null ? '—' : pc(r.i)) + '</td><td>' + (r.a == null ? '—' : pc(r.a)) + (r.b != null ? '<small>25회 ' + pc(r.b) + '</small>' : '') + '</td></tr>'; }).join('');
+    var adds = D.rows.filter(function (r) { return r.ad; }).map(function (r) { return '<tr><td>' + esc(r.n) + '</td><td>' + (r.i == null ? '—' : pc(r.i)) + '</td><td>' + (r.a == null ? '—' : pc(r.a)) + '</td></tr>'; }).join('');
+    return '<details class="ref"' + (S.open['ref:' + D.id] ? ' open' : '') + ' data-open="ref:' + D.id + '"><summary>' + esc(D.n) + ' 전체 지급률표 보기</summary><div class="tw"><table class="lt"><tr><th>상품 · 납기</th><th>익월</th><th>13회차</th></tr>' + rows + adds + '</table></div></details>';
+  }
+  function cardHtml(c) {
+    var D = coById(c.id);
+    var lines = c.lines.map(function (l) {
+      var r = l.row;
+      return '<tr><td>' + esc(r.n) + '<small>' + esc(r.t || '') + (r.t ? ' · ' : '') + '10/' + esc(l.d || '?') + (r.ls ? ' · 일시납' : '') + '</small></td><td>' + wn(l.p) + '</td><td>' + (r.i == null ? '—' : wn(l.a1)) + '<small>' + (r.i == null ? '' : pc(r.i)) + '</small></td><td>' + (r.a == null && r.b == null ? '—' : wn(l.a13 + l.a25)) + '<small>' + (r.a == null ? '' : pc(r.a)) + (r.b != null ? ' · 25회 ' + pc(r.b) : '') + '</small></td></tr>';
+    }).join('');
+    var adds = c.adds.filter(function (a) { return a.base > 0; }).map(function (a) {
+      return '<tr class="' + (a.on ? '' : 'off') + '"><td><label class="chk"><input type="checkbox" data-co="' + c.id + '" data-ad="' + a.xi + '"' + (a.on ? ' checked' : '') + '>' + esc(a.row.n.replace('[추가] ', '')) + '</label><small>대상 월초 ' + won(a.base) + '</small></td><td>' + (a.row.i == null ? '—' : wn(a.on ? a.a1 : 0)) + '</td><td>' + (a.row.a == null ? '—' : wn(a.on ? a.a13 : 0)) + '<small>' + (a.row.a == null ? '' : pc(a.row.a)) + '</small></td></tr>';
+    }).join('');
+    var progs = c.progs.map(function (pg) { return progHtml(c, pg); }).join('');
+    var brk = '익월 ' + won(c.m1) + ' · 13회차 이후 ' + won(c.later) + ' · 구간·합산 ' + won(c.prog) + (c.gold ? ' · 골드바 ' + c.gold + '돈' : '');
+    return '<details class="co" id="co-' + c.id + '" data-open="co:' + c.id + '"' + (S.open['co:' + c.id] ? ' open' : '') + '><summary><span class="co-name">' + esc(c.n) + '</span><span class="co-tot">' + won(c.total) + '</span><span class="co-brk">' + brk + '</span></summary><div class="co-body">' +
+      '<div><div class="grp"><span>상품별 시책</span><b>' + won(c.m1 + c.later - addSum(c)) + '</b></div>' +
+      (lines ? '<div class="tw"><table class="lt"><tr><th>상품</th><th>월초(원)</th><th>익월(원)</th><th>13회차(원)</th></tr>' + lines + '</table></div>' : '<p class="meta">입력한 상품이 없습니다.</p>') + '</div>' +
+      (adds ? '<div><div class="grp"><span>추가 시상 (해당 시 체크)</span><b>' + won(addSum(c)) + '</b></div><div class="tw"><table class="lt"><tr><th>추가 시상</th><th>익월(원)</th><th>13회차(원)</th></tr>' + adds + '</table></div></div>' : '') +
+      (progs ? '<div><div class="grp"><span>기간·구간 합산 시책</span><b>' + won(c.prog) + '</b></div>' + progs + '</div>' : '') +
+      '<div class="memo"><h3>비고</h3><ul>' + D.memo.map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('') + '</ul></div>' +
+      refHtml(D) + '</div></details>';
+  }
+  function addSum(c) { var t = 0; c.adds.forEach(function (a) { if (a.on && a.base > 0) t += a.a1 + a.a13; }); return t; }
+
+  function calc() {
+    var R = compute(S);
+    $('s-first').textContent = won(R.first);
+    $('s-later').textContent = won(R.later);
+    $('s-prog').textContent = won(R.prog);
+    $('s-total').textContent = won(R.total);
+    $('s-gold').textContent = R.gold ? '입력한 보험사 합계 · 별도 골드바 ' + R.gold + '돈' : '입력한 보험사 합계';
+    var tb = R.cos.map(function (c) {
+      return '<tr data-go="' + c.id + '"><td>' + esc(c.n) + '</td><td>' + wn(c.base) + '</td><td>' + wn(c.m1) + '</td><td>' + wn(c.later) + '</td><td>' + wn(c.prog) + (c.gold ? '<br><span class="gold">' + c.gold + '돈</span>' : '') + '</td><td class="tot">' + wn(c.total) + '</td></tr>';
+    }).join('');
+    $('cmp').tBodies[0].innerHTML = tb || '<tr><td colspan="6" style="text-align:left;color:var(--muted);position:static">보험사를 추가하면 여기에 비교됩니다.</td></tr>';
+    var base = 0; R.cos.forEach(function (c) { base += c.base; });
+    $('cmp').tFoot.innerHTML = R.cos.length > 1 ? '<tr><td>합계</td><td>' + wn(base) + '</td><td>' + wn(R.first) + '</td><td>' + wn(R.later) + '</td><td>' + wn(R.prog) + '</td><td class="tot">' + wn(R.total) + '</td></tr>' : '';
+    $('cards').innerHTML = R.cos.map(cardHtml).join('') || '<p class="empty">보험사를 추가하면 상품별 지급률, 추가 시상, 기간 합산 구간표가 여기에 표시됩니다.</p>';
+    save();
+  }
+  function edited() { if (S.sample) { S.sample = false; $('sample').hidden = true; } }
+
+  /* ---------- 이벤트 ---------- */
+  $('btn-add').addEventListener('click', function () { var p = $('picker'); p.hidden = !p.hidden; this.setAttribute('aria-expanded', String(!p.hidden)); });
+  $('picker').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-pick]'); if (!b) return;
+    var D = coById(b.dataset.pick);
+    S.cos.push({ id: D.id, items: [{ ri: baseIdx(D)[0], p: '', d: today() }], man: {}, ad: {} });
+    S.open['co:' + D.id] = true; edited();
+    $('picker').hidden = true; $('btn-add').setAttribute('aria-expanded', 'false');
+    renderInputs(); calc();
+    var sel = document.querySelector('.it[data-co="' + D.id + '"] select'); if (sel) sel.focus();
+  });
+  $('inputs').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act]'); if (!b) return;
+    var row = b.closest('.it'), id = b.dataset.co || (row && row.dataset.co), st = stOf(id);
+    if (!st) return;
+    edited();
+    if (b.dataset.act === 'add-it') { var last = st.items[st.items.length - 1]; st.items.push({ ri: last ? last.ri : baseIdx(coById(id))[0], p: '', d: last ? last.d : today() }); }
+    if (b.dataset.act === 'rm-it') st.items.splice(+row.dataset.k, 1);
+    if (b.dataset.act === 'rm-co') S.cos = S.cos.filter(function (c) { return c.id !== id; });
+    renderInputs(); calc();
+  });
+  function onField(e) {
+    var t = e.target;
+    if (t.dataset.man) { var s1 = stOf(t.dataset.co); s1.man = s1.man || {}; s1.man[t.dataset.man] = t.value; edited(); calc(); return; }
+    var row = t.closest('.it'); if (!row || !t.dataset.f) return;
+    var st = stOf(row.dataset.co), it = st.items[+row.dataset.k];
+    if (t.dataset.f === 'ri') {
+      it.ri = +t.value;
+      var r = coById(st.id).rows[it.ri];
+      row.querySelector('[data-rate]').innerHTML = rateHtml(r);
+      row.querySelector('[data-f="p"]').previousElementSibling.textContent = r.ls ? '일시납 보험료(원)' : '월초(원)';
+    } else if (t.dataset.f === 'h') it.h = t.checked;
+    else { it[t.dataset.f] = t.value; if (t.dataset.f === 'p') row.querySelector('[data-won]').textContent = wonHint(t.value); }
+    edited(); calc();
+  }
+  $('inputs').addEventListener('input', onField);
+  $('inputs').addEventListener('change', function (e) { if (e.target.tagName === 'SELECT' || e.target.type === 'checkbox') onField(e); });
+  $('cards').addEventListener('change', function (e) {
+    var t = e.target; if (t.dataset.ad == null) return;
+    var st = stOf(t.dataset.co); st.ad = st.ad || {}; st.ad[t.dataset.ad] = t.checked; edited(); calc();
+  });
+  $('cmp').addEventListener('click', function (e) {
+    var tr = e.target.closest('[data-go]'); if (!tr) return;
+    var d = $('co-' + tr.dataset.go); if (!d) return;
+    S.open['co:' + tr.dataset.go] = true; d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  document.addEventListener('toggle', function (e) { var d = e.target; if (d.dataset && d.dataset.open) { S.open[d.dataset.open] = d.open; save(); } }, true);
+  var confirmTimer = null;
+  $('btn-clear').addEventListener('click', function () {
+    var b = this;
+    if (!confirmTimer) { b.textContent = '한 번 더 누르면 모두 지워집니다'; confirmTimer = setTimeout(function () { b.textContent = '입력 비우기'; confirmTimer = null; }, 3000); return; }
+    clearTimeout(confirmTimer); confirmTimer = null; b.textContent = '입력 비우기';
+    S = { cos: [], open: {} }; renderInputs(); calc(); toast('입력을 모두 지웠습니다');
+  });
+  function toast(m) { var t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 2200); }
+
+  renderInputs(); calc();
+})();
+
+</script>
+
+</body></html>
