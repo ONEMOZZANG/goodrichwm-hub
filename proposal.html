@@ -144,11 +144,12 @@ tr.add td{background:var(--ok-bg)}
 .cxrow .t{font-weight:600;min-width:0;overflow-wrap:anywhere}
 .cxrow .m{grid-column:1/-1;font-size:12px;color:var(--muted)}
 .cxrow.off{background:var(--warn-bg);border-color:var(--warn)}
-.cxrow.off .t span.nm{text-decoration:line-through;color:var(--muted)}
+.cxrow.off .t span.nm{text-decoration:line-through;text-decoration-color:var(--hot-line);text-decoration-thickness:2px;color:var(--muted)}
 .xbadge{display:inline-block;font-size:11px;font-weight:700;color:#fff;background:var(--hot-line);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:1px}
 .btn.x{color:var(--hot-line);border-color:var(--hot-line)}
-tr.off td{color:var(--muted)}
-tr.off td.name span.nm{text-decoration:line-through}
+tr.off td{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--hot-line);text-decoration-thickness:2px}
+tr.off td .xbadge{text-decoration:none}
+tr.off td span.nm{text-decoration:line-through;text-decoration-color:var(--hot-line);text-decoration-thickness:2px}
 .drops{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
 label.drop{position:relative;display:flex;flex-direction:column;gap:4px;border:2px dashed var(--line);border-radius:12px;padding:18px 16px;background:var(--bg);cursor:pointer;min-width:0;transition:border-color .15s,background .15s}
 label.drop:hover,label.drop.over,label.drop:focus-within{border-color:var(--accent);background:var(--accent-soft)}
