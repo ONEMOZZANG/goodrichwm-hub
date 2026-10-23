@@ -117,6 +117,9 @@ tr.grp td{background:var(--none-bg);color:var(--muted);font-weight:700;font-size
 .foot b{color:var(--fg)}
 .copybox{width:100%;min-height:140px;margin-top:8px}
 .tabpanel[hidden]{display:none}
+.prefix{display:flex;align-items:stretch;min-width:0}
+.prefix span{display:flex;align-items:center;padding:0 9px;border:1px solid var(--line);border-right:0;border-radius:7px 0 0 7px;background:var(--bg);color:var(--fg);font-weight:700;font-size:13px;white-space:nowrap}
+.prefix input{border-radius:0 7px 7px 0}
 .phead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
 .phead h2{margin:0}
 .phead .src{font-size:12px;color:var(--muted);font-weight:500;margin-left:8px}
@@ -235,7 +238,7 @@ details.um ul{margin:8px 0 0;padding-left:20px;color:var(--muted)}
       <h2>담당자 정보</h2>
       <p class="sub">제안서 표지와 하단에 들어갑니다. 이 브라우저에 기억해 두므로 다음에는 다시 입력하지 않아도 됩니다.</p>
       <div class="grid">
-        <label class="f">소속<input id="m-org" data-s="meta" data-f="org" placeholder="예: 굿리치 리치VIP지점" autocomplete="organization"></label>
+        <label class="f">소속<span class="prefix"><span aria-hidden="true">굿리치WM본부</span><input id="m-org" data-s="meta" data-f="org" placeholder="예: 리치VIP지점" autocomplete="organization" aria-label="소속 (굿리치WM본부 뒤에 붙는 지점명)"></span></label>
         <label class="f">담당자명<input id="m-agent" data-s="meta" data-f="agent" placeholder="예: 홍길동" autocomplete="name"></label>
         <label class="f">직책<input id="m-role" data-s="meta" data-f="role" placeholder="예: 지점장" autocomplete="organization-title"></label>
       </div>
@@ -660,13 +663,16 @@ var PC=(function(){
   function perArr(o){return STD.map(function(s){return o[s[1]]||0})}
   var AG_KEY='goodrich-proposal-agent';
   function agentDefaults(){
-    var d={org:'굿리치',agent:'황원모',role:'지점장'};
+    var d={org:'',agent:'황원모',role:'지점장'};
     try{var s=JSON.parse(localStorage.getItem(AG_KEY)||'null');if(s&&typeof s==='object'){['org','agent','role'].forEach(function(k){if(typeof s[k]==='string')d[k]=s[k]})}}catch(e){}
+    d.org=stripOrg(d.org);
     return d;
   }
   function saveAgent(){try{localStorage.setItem(AG_KEY,JSON.stringify({org:S.meta.org||'',agent:S.meta.agent||'',role:S.meta.role||''}))}catch(e){}}
   function withAgent(m){var a=agentDefaults();m.org=a.org;m.agent=a.agent;m.role=a.role;return m}
-  function agentLine(){return [S.meta.org,S.meta.agent,S.meta.role].map(function(x){return (x||'').trim()}).filter(Boolean).join(' ')||'굿리치WM본부'}
+  var ORG_FIX='굿리치WM본부';
+  function stripOrg(s){return String(s||'').replace(/^\s*(\(주\)\s*)?굿리치\s*(\(주\)\s*)?(WM\s*본부|더블유엠본부)?\s*/i,'').trim()}
+  function agentLine(){return [ORG_FIX,stripOrg(S.meta.org),S.meta.agent,S.meta.role].map(function(x){return (x||'').trim()}).filter(Boolean).join(' ')}
   var DISCLAIMER='본 제안서는 고객님의 이해를 돕기 위해 작성된 요약 자료이며, 실제 보장 내용 및 지급 제한 사유 등은 반드시 약관 및 상품설명서를 참조하시기 바랍니다. 보험계약 체결 전 상품설명서와 약관을 반드시 읽어보시기 바랍니다.';
   function blankItems(){return STD.map(function(s){return {g:s[0],n:s[1],std:String(s[2]),before:'',add:'',note:''}})}
   function sample(){
