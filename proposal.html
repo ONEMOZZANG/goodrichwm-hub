@@ -415,6 +415,7 @@ var PC=(function(){
     var v=0,re=/(\d[\d,]*)(억|천만|백만|만)?/g,m,any=false;
     var base=s.replace(/원$/,'');
     if(!/[억만]/.test(base)){return Math.round(parseInt(base.replace(/,/g,''),10)/10000)}
+    var tail=base.match(/만([\d,]+)$/); if(tail){ base=base.slice(0,base.length-tail[1].length); }
     while((m=re.exec(base))){
       var n=parseInt(m[1].replace(/,/g,''),10);
       if(m[2]==='억')v+=n*10000;else if(m[2]==='천만')v+=n*1000;else if(m[2]==='백만')v+=n*100;else if(m[2]==='만')v+=n;
@@ -469,31 +470,62 @@ var PC=(function(){
     var out={ok:false,cov:[],meta:{},warn:[]};
     var all=pages.map(function(p){return lines(p.items)}),text=all.map(function(rs){return rs.map(function(r){return r.text}).join('\n')}).join('\n');
     out.meta.insurer=findInsurer(text);
-    var pm=text.match(/(?:\((?:무|유)\)|무배당)\s*[^\n]{4,120}/); if(pm) out.meta.product=cleanProduct(pm[0].replace(/^무배당/,'')).slice(0,60);
-    var ins=text.match(/피보험자\s*:\s*([가-힣A-Za-z]{2,10})/); if(ins) out.meta.insured=ins[1];
-    var tm=text.match(/(\d+년납\s*\d+세만기)\s*\|?\s*(월납|연납|일시납)?/); if(tm) out.meta.term=(tm[1]+(tm[2]?' · '+tm[2]:'')).trim();
-    var pr=text.match(/보장보험료[^\d\n]{0,6}([\d,]{4,})\s*원/); if(pr) out.meta.prem=parseInt(pr[1].replace(/,/g,''),10);
-    var b1=text.match(/1회차보험료[^\n]*?\s([\d,]{4,})\s*원/); if(b1) out.meta.billed=parseInt(b1[1].replace(/,/g,''),10);
-    var dm=text.match(/(20\d\d\.\d\d\.\d\d)\s+\d\d:\d\d:\d\d/); if(dm) out.meta.pdate=dm[1];
+    var pm=text.match(/(?:\((?:무|유)\)|무배당)\s*[^\n]{4,120}/); if(pm) out.meta.product=cleanProduct(pm[0].replace(/^무배당/,'')).replace(/[_\s]+$/,'').replace(/_/g,' ').trim().slice(0,60);
+    var tn=text.replace(/[ \t|]+/g,'');           // 글자 사이 공백(보 험 료) 제거본
+    function grabN(res){for(var i=0;i<res.length;i++){var m=tn.match(res[i]);if(m)return parseInt(m[1].replace(/,/g,''),10)}return 0}
+    var ins=tn.match(/피보험자명?:([가-힣A-Za-z]{2,10})/); if(ins&&!/보험|계약/.test(ins[1])) out.meta.insured=ins[1];
+    var tm=text.match(/(\d+년납\s*\d+세만기)/); if(tm){ var pay=(tn.match(/(월납|연납|일시납)/)||[])[1]; out.meta.term=tm[1]+(pay?' · '+pay:''); }
+    out.meta.prem=grabN([/보장보험료(?:합계)?:?([\d,]{4,})원/,/합계보험료:?([\d,]{4,})원/,/보험료:([\d,]{4,})원/]);
+    out.meta.billed=grabN([/1회차보험료(?:\(할인후\))?:?([\d,]{4,})원/,/실납입보험료:?([\d,]{4,})원/])||out.meta.prem;
+    if(!out.meta.prem) delete out.meta.prem; if(!out.meta.billed) delete out.meta.billed;
+    var dm=text.match(/(20\d\d)[.\-](\d\d)[.\-](\d\d)\s+\d\d:\d\d:\d\d/); if(dm) out.meta.pdate=dm[1]+'.'+dm[2]+'.'+dm[3];
 
+    /* 담보 표: 머리글(가입금액·보험료) 열 위치를 찾고, 머리글 없는 다음 쪽은 같은 열로 이어 읽는다.
+       같은 표가 요약·상세로 두 번 실리는 제안서가 있어, 연속된 쪽 묶음별로 모은 뒤 보험료 합계가 맞는 묶음을 고른다 */
+    var segs=[],cur=null,cols=null,gap=true;
     pages.forEach(function(pg){
       var its=pg.items.filter(function(i){return i.str&&i.str.trim()}).map(function(i){return {x:i.transform[4],y:i.transform[5],s:i.str.trim()}});
-      var hA=its.filter(function(i){return i.s==='가입금액'})[0],hP=its.filter(function(i){return /^보험료\(원\)$/.test(i.s)})[0],hT=its.filter(function(i){return /^납기\/만기$/.test(i.s)})[0];
-      if(!hA||!hP) return;
-      var amtItems=its.filter(function(i){return Math.abs(i.x-hA.x)<60&&i.y<hA.y&&/^\d[\d,]*(억|천만|백만|만)*\s*(억|천만|백만|만)?원$/.test(i.s)&&/[억만]/.test(i.s)});
+      var hA=its.filter(function(i){return i.s.replace(/\s/g,'')==='가입금액'})[0],hP=its.filter(function(i){return /^보험료\(원\)$/.test(i.s.replace(/\s/g,''))})[0];
+      var top=1e9;
+      if(hA&&hP){
+        var row=its.filter(function(i){return Math.abs(i.y-hA.y)<=3}).sort(function(a,b){return a.x-b.x});
+        var nh=row.filter(function(i){return /담\s*보\s*명|가입담보|보장명|담보사항/.test(i.s)})[0];
+        var after=nh?row.filter(function(i){return i.x>nh.x+5})[0]:null, before=nh?row.filter(function(i){return i.x<nh.x-5}).pop():null;
+        var hT=row.filter(function(i){return i.x>hP.x&&/납기|만기/.test(i.s)})[0];
+        cols={a:hA.x,p:hP.x,nameMin:before?before.x+30:100,nameMax:Math.min(after?after.x-15:hA.x-8,hA.x-8),pMax:hT?hT.x-4:hP.x+70};
+        top=hA.y; cur=null;
+      }
+      if(!cols){cur=null;gap=true;return}
+      var amtItems=its.filter(function(i){return Math.abs(i.x-cols.a)<60&&i.y<top&&/^\d[\d,]*(억|천만|백만|만)[\d,]*(천만|백만|만)?[\d,]*원$/.test(i.s)});
+      if(!amtItems.length){cols=null;cur=null;gap=true;return}
+      if(!cur){cur=[];cur.gap=gap;segs.push(cur);gap=false}
       amtItems.sort(function(a,b){return b.y-a.y});
-      var nameMax=hA.x-8,pMax=hT?hT.x-4:hP.x+70;
       amtItems.forEach(function(a,idx){
         var up=idx?(amtItems[idx-1].y+a.y)/2:a.y+14,dn=idx<amtItems.length-1?(amtItems[idx+1].y+a.y)/2:a.y-14;
         var band=its.filter(function(i){return i.y<=up+0.01&&i.y>dn});
-        var code=band.filter(function(i){return /^\d{1,4}$/.test(i.s)&&i.x>55&&i.x<100})[0];
-        var nm=band.filter(function(i){return i.x>=100&&i.x<nameMax}).sort(function(p,q){return q.y-p.y||p.x-q.x}).map(function(i){return i.s}).join('');
-        var pm2=band.filter(function(i){return i.x>=hP.x-18&&i.x<pMax&&/^[\d,]+$/.test(i.s)})[0];
+        var code=band.filter(function(i){return /^\d{1,4}$/.test(i.s)&&i.x>55&&i.x<cols.nameMin})[0];
+        var nm=band.filter(function(i){return i.x>=cols.nameMin&&i.x<cols.nameMax}).sort(function(p,q){return q.y-p.y||p.x-q.x}).map(function(i){return i.s}).join('');
+        var pm2=band.filter(function(i){return i.x>=cols.p-18&&i.x<cols.pMax&&/^[\d,]+$/.test(i.s)})[0];
         var renew=band.some(function(i){return /갱신/.test(i.s)})||/갱신형|갱신\)/.test(nm);
-        if(!nm) return;
-        out.cov.push({code:code?code.s:'',name:nm,amt:amt(a.s),amtRaw:a.s,prem:pm2?parseInt(pm2.s.replace(/,/g,''),10):0,renew:renew});
+        if(!nm||/합\s*계/.test(nm)) return;
+        cur.push({code:code?code.s:'',name:nm,amt:amt(a.s),amtRaw:a.s,prem:pm2?parseInt(pm2.s.replace(/,/g,''),10):0,renew:renew});
       });
     });
+    function segSum(s){return s.reduce(function(a,c){return a+c.prem},0)}
+    var pick=null;
+    if(out.meta.prem){
+      for(var si=0;si<segs.length&&!pick;si++){
+        var acc=[],sm=0;
+        for(var sj=si;sj<segs.length;sj++){
+          if(sj>si&&segs[sj].gap) break;
+          acc=acc.concat(segs[sj]); sm+=segSum(segs[sj]);
+          if(sm===out.meta.prem){pick=acc;break}
+          if(sm>out.meta.prem) break;
+        }
+      }
+    }
+    if(!pick){ var seen={}; pick=[]; segs.forEach(function(s){s.forEach(function(c){var k=c.name+'|'+c.amtRaw+'|'+c.prem; if(!seen[k]){seen[k]=1;pick.push(c)}})}); }
+    out.cov=pick;
     if(!out.cov.length) out.warn.push('담보 목록(가입담보·가입금액·보험료)을 찾지 못했습니다. 이 형식은 직접 입력 탭을 이용해 주세요.');
     var sum=out.cov.reduce(function(a,c){return a+c.prem},0); out.sum=sum;
     if(out.meta.prem&&sum&&sum!==out.meta.prem) out.warn.push('담보별 보험료 합계('+sum.toLocaleString('ko-KR')+'원)가 보장보험료('+out.meta.prem.toLocaleString('ko-KR')+'원)와 다릅니다. 제안 담보 탭에서 확인해 주세요.');
@@ -517,25 +549,28 @@ var PC=(function(){
       function mx(k){A(k).max=Math.max(A(k).max,a);A(k).hit++;hit=true;c.items.push(k)}
       if(/상해사망/.test(n)) sum('상해사망');
       if(/질병사망/.test(n)) sum('질병사망');
-      if(/후유장해/.test(n)&&/3%/.test(n)){ if(/상해/.test(n)) sum('상해 후유장해(3%↑)'); if(/질병/.test(n)) sum('질병 후유장해(3%↑)'); }
+      if(/후유장해/.test(n)&&/3\s*%|3\s*[~\-]\s*100\s*%/.test(n)){ if(/상해/.test(n)) sum('상해 후유장해(3%↑)'); if(/질병/.test(n)) sum('질병 후유장해(3%↑)'); }
       if(/암진단비/.test(n)&&!/유사암진단비/.test(n)&&!/통합암진단비/.test(n)&&!/소액암/.test(n)){ sum('일반암 진단비'); if(/전이/.test(n)) sum('전이암 진단비'); }
       if(/통합암진단비/.test(n)){ mx('전이암 진단비'); A('전이암 진단비').note='유형별'; }
       if(/유사암/.test(n)&&!/제외/.test(n)&&/진단비/.test(n)) sum('유사암 진단비');
-      if(/암\s*수술비/.test(n)) sum('암 수술비');
+      if(/암\s*수술비/.test(n)&&!/로봇|다빈치/.test(n)) sum('암 수술비');
       if(/암.*통합치료비|표적항암.*치료비/.test(n)){ mx('고액항암치료비'); A('고액항암치료비').note='연 한도'; }
       if(/뇌혈관질환진단비/.test(n)){ sum('뇌혈관질환 진단비'); sum('뇌졸중 진단비'); }
       if(/뇌졸중진단비/.test(n)) sum('뇌졸중 진단비');
-      if(/허혈성심장질환진단비/.test(n)){ sum('허혈성심장질환 진단비'); sum('급성심근경색 진단비'); }
+      if(/허혈성심(장)?질환진단비/.test(n)){ sum('허혈성심장질환 진단비'); sum('급성심근경색 진단비'); }
       if(/급성심근경색.*진단비/.test(n)) sum('급성심근경색 진단비');
       if(/131대질병수술비\(뇌혈관/.test(n)) sum('뇌혈관질환 수술비');
       if(/131대질병수술비\(심장/.test(n)) sum('심장질환 수술비');
       if(/^상해수술비/.test(n)){A('상해 수술비').base+=a;A('상해 수술비').hit++;hit=true;c.items.push('상해 수술비')}
       if(/^질병수술비/.test(n)){A('질병 수술비').base+=a;A('질병 수술비').hit++;hit=true;c.items.push('질병 수술비')}
-      if(/수술비.{0,12}상해\d종/.test(n)){A('상해 수술비').jong.push(a);hit=true;c.items.push('상해 수술비')}
+      if(/상해\d\s*~\s*\d종수술비.*\(\d종\)/.test(n)){A('상해 수술비').jong.push(a);hit=true;c.items.push('상해 수술비')}
+      else if(/질병\d\s*~\s*\d종수술비.*\(\d종\)/.test(n)){A('질병 수술비').jong.push(a);hit=true;c.items.push('질병 수술비')}
+      else if(/수술비.{0,12}상해\d종/.test(n)){A('상해 수술비').jong.push(a);hit=true;c.items.push('상해 수술비')}
       if(/수술비.{0,12}질병\d종/.test(n)){A('질병 수술비').jong.push(a);hit=true;c.items.push('질병 수술비')}
-      if(/입원일당/.test(n)){
-        var k=/간병/.test(n)?(/상해/.test(n)?'간병인 입원일당 · 상해(만원/일)':'간병인 입원일당 · 질병(만원/일)'):(/상해/.test(n)?'상해 입원일당(만원/일)':'질병 입원일당(만원/일)');
-        A(k).vals.push(a);A(k).hit++;hit=true;c.items.push(k);
+      if(/간병인/.test(n)&&/입원일당|입원비/.test(n)){
+        if(!/\(요양병원\)/.test(n)){ if(/상해/.test(n)) mx('간병인 입원일당 · 상해(만원/일)'); if(/질병/.test(n)) mx('간병인 입원일당 · 질병(만원/일)'); } else hit=true;
+      } else if(/입원일당|입원비/.test(n)&&!/간호|간병|의료비|실손/.test(n)){
+        [/상해/.test(n)?'상해 입원일당(만원/일)':null,/질병/.test(n)?'질병 입원일당(만원/일)':null].forEach(function(k){ if(k){A(k).vals.push(a);A(k).hit++;hit=true;c.items.push(k)} });
       }
       if(/장기요양|요양자금/.test(n)) sum('장기요양자금(1~4등급)');
       if(/치매진단/.test(n)) sum('경증이상 치매진단비');
