@@ -177,6 +177,10 @@ ol.props b{display:block}
 .actions{display:flex;flex-wrap:wrap;gap:8px}
 .caveat{font-size:12px;color:var(--muted)}
 .caveat ul{margin:4px 0 0;padding-left:18px}
+.pdfmode .result{width:820px;max-width:none}
+.pdfmode .noprint,.pdfmode #ai-card,.pdfmode .fund input:placeholder-shown{display:none!important}
+.pdfmode .card,.pdfmode .doc,.pdfmode .summary{box-shadow:none}
+.pdfmode .tbl{overflow:visible}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;z-index:20}
 .err{background:var(--bad-soft);color:var(--bad);border-radius:7px;padding:10px 12px;font-size:13px}
 
@@ -583,6 +587,8 @@ if(typeof module !== "undefined") module.exports = { parseOZ, analyzeRules, ITEM
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s);
@@ -996,7 +1002,7 @@ function render(d, ctx){
     ${d.talk ? sec("상담 멘트", null, `<div class="talk">${esc(d.talk)}</div><div class="actions"><button class="mini" id="cp-talk">멘트 복사</button></div>`) : ""}
 
     <section class="card">
-      <div class="actions"><button id="cp-all">진단서 텍스트 복사</button><button id="dl" hidden>진단서 파일로 저장</button></div>
+      <div class="actions noprint"><button class="primary" id="dl" style="padding:8px 14px;font-size:14px">진단서 PDF 다운로드</button><button id="cp-all">진단서 텍스트 복사</button></div>
       ${(d.caveats||[]).length?`<div class="caveat"><b>분석 한계·추가 확인</b><ul>${d.caveats.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`:""}
       <p class="caveat">이 진단서는 상담 준비용 참고자료입니다. 약관·가입설계서로 최종 확인 후 안내하세요. 변액보험 펀드 수익률은 생명보험협회 공시실이나 해당 보험사 공시실에서 확인한 값을 계약 카드에 입력하면 진단서에 반영됩니다.</p>
     </section>`;
@@ -1006,18 +1012,59 @@ function render(d, ctx){
   const copy = (txt, msg) => { navigator.clipboard.writeText(txt).then(()=>toast(msg), ()=>toast("복사가 막혀 있어요. 텍스트를 직접 선택해 주세요")); };
   $("#cp-talk") && ($("#cp-talk").onclick = ()=> copy(d.talk, "상담 멘트를 복사했습니다"));
   $("#cp-all").onclick = ()=> copy(toText(d, ctx), "진단서 텍스트를 복사했습니다");
-  const fname = `보장진단서_${(cu.name||"고객").replace(/[\\/:*?"<>|]/g,"")}_${ymd.replace(/\./g,"")}.html`;
-  downloadsP.then(dl=>{ const b=$("#dl"); if(!b) return;
-    if(dl){ b.hidden=false; b.onclick = async ()=>{
-      try{ await dl.save({ filename: fname, data: reportHtml(d, ctx) }); toast("저장했습니다"); }
-      catch(e){ if(e?.code!=="declined" && e?.code!=="cancelled") toast("저장하지 못했습니다"); }
-    }; }
-    else if(!window.claude){ b.hidden=false; b.onclick = ()=>{
-      const url = URL.createObjectURL(new Blob([reportHtml(d, ctx)], {type:"text/html;charset=utf-8"}));
-      const a = document.createElement("a"); a.href = url; a.download = fname; document.body.append(a); a.click(); a.remove();
-      setTimeout(()=> URL.revokeObjectURL(url), 5000);
-    }; }
-  });
+  const fname = `보장진단서_${(cu.name||"고객").replace(/[\\/:*?"<>|]/g,"")}_${ymd.replace(/\./g,"")}.pdf`;
+  $("#dl").onclick = async ()=>{
+    const b = $("#dl"); b.disabled = true; const label = b.textContent; b.textContent = "PDF 만드는 중…";
+    try{
+      const pdf = await makePdf();
+      const dl = await downloadsP;
+      if(dl){ try{ await dl.save({ filename: fname, data: pdf.output("blob") }); toast("PDF를 저장했습니다"); }
+              catch(e){ if(e?.code!=="declined" && e?.code!=="cancelled") toast("저장하지 못했습니다"); } }
+      else { pdf.save(fname); toast("PDF를 내려받았습니다"); }
+    }catch(e){ toast(e?.message || "PDF를 만들지 못했습니다"); }
+    finally{ b.disabled = false; b.textContent = label; }
+  };
+}
+/* 진단서 화면을 A4 PDF로 — 섹션 단위로 쪽을 나눠 카드가 잘리지 않게 */
+async function makePdf(){
+  const J = window.jspdf?.jsPDF;
+  if(!J || !window.html2canvas) throw new Error("PDF 도구를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.");
+  const root = document.documentElement, prev = root.getAttribute("data-theme");
+  root.setAttribute("data-theme","light"); document.body.classList.add("pdfmode");
+  try{
+    await document.fonts?.ready;
+    await new Promise(r => requestAnimationFrame(()=> requestAnimationFrame(r)));
+    const pdf = new J({ unit:"mm", format:"a4", compress:true });
+    const W = 210, H = 297, M = 10, CW = W - 2*M, GAP = 4;
+    let y = M;
+    const blocks = [...$("#result").children].filter(el => el.offsetHeight && !el.classList.contains("noprint") && !el.classList.contains("banner"));
+    for(const el of blocks){
+      const parts = [el];
+      for(const part of parts){
+        const cv = await html2canvas(part, { scale: 2, backgroundColor: "#ffffff", logging: false, useCORS: true });
+        const pxmm = cv.width / CW, h = cv.height / pxmm;
+        if(h <= H - 2*M){
+          if(y + h > H - M - 6){ pdf.addPage(); y = M; }
+          pdf.addImage(cv.toDataURL("image/jpeg", 0.92), "JPEG", M, y, CW, h); y += h + GAP;
+        } else {
+          let off = 0;
+          while(off < cv.height){
+            if(H - M - 6 - y < 30){ pdf.addPage(); y = M; }
+            const sh = Math.min(cv.height - off, Math.floor((H - M - 6 - y) * pxmm));
+            const c = document.createElement("canvas"); c.width = cv.width; c.height = sh;
+            c.getContext("2d").drawImage(cv, 0, off, cv.width, sh, 0, 0, cv.width, sh);
+            pdf.addImage(c.toDataURL("image/jpeg", 0.92), "JPEG", M, y, CW, sh / pxmm); y += sh / pxmm + GAP; off += sh;
+          }
+        }
+      }
+    }
+    const n = pdf.getNumberOfPages();
+    for(let i = 1; i <= n; i++){ pdf.setPage(i); pdf.setFontSize(8); pdf.setTextColor(150); pdf.text(`${i} / ${n}`, W/2, H - 4, { align:"center" }); }
+    return pdf;
+  } finally {
+    prev == null ? root.removeAttribute("data-theme") : root.setAttribute("data-theme", prev);
+    document.body.classList.remove("pdfmode");
+  }
 }
 function toText(d, ctx){
   const s=d.summary||{}, cu=ctx.cust, a=ctx.applied, pv=premiumVerdict(d, a), nm = n=>cleanName(n, ctx.klass.paren), L=[];
