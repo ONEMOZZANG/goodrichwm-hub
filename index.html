@@ -6,16 +6,16 @@
 /* Layout: sticky tab bar on top, tool tiles below — a launcher, not a landing page */
 :root{
   --bg:#f5f6f8; --surface:#ffffff; --fg:#141a26; --muted:#5d6678; --line:#dfe3ea;
-  --navy:#16305c; --accent:#c8952e; --accent-soft:#f6ecd7;
+  --navy:#2b2f36; --accent:#f39200; --accent-soft:#fff1de;
   --display:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   --body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0f141d; --surface:#171e2b; --fg:#e8ecf3; --muted:#9aa4b6; --line:#2a3344;
-  --navy:#9fb8e6; --accent:#e0b157; --accent-soft:#2c2618; color-scheme:dark}}
+  --navy:#e8ecf3; --accent:#ffa733; --accent-soft:#33260f; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0f141d; --surface:#171e2b; --fg:#e8ecf3; --muted:#9aa4b6; --line:#2a3344;
-  --navy:#9fb8e6; --accent:#e0b157; --accent-soft:#2c2618; color-scheme:dark}
+  --navy:#e8ecf3; --accent:#ffa733; --accent-soft:#33260f; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-weight:500;line-height:1.6}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
@@ -23,7 +23,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 header.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
 .bar .wrap{display:flex;align-items:center;gap:20px;padding-block:10px;flex-wrap:wrap}
 .brand{font-family:var(--display);font-weight:900;color:var(--navy);font-size:1.05rem;letter-spacing:-.01em;white-space:nowrap}
-.brand span{color:var(--accent)}
+.brand{display:flex;align-items:center;gap:10px}.brand img{height:24px;width:auto;display:block}.brand span{color:var(--fg);font-weight:800;font-size:.98rem}
 nav.tabs{display:flex;gap:6px;flex-wrap:wrap}
 nav.tabs a{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;border:1px solid var(--line);
   color:var(--fg);text-decoration:none;font-weight:600;font-size:.92rem;background:var(--bg);transition:background .15s,border-color .15s}
@@ -41,13 +41,18 @@ h1{font-family:var(--display);font-weight:800;font-size:clamp(1.5rem,4vw,2rem);m
 .tile h2{font-family:var(--display);font-weight:800;font-size:1.2rem;margin:0}
 .tile p{margin:0;color:var(--muted);font-size:.93rem;flex:1}
 .go{font-weight:600;color:var(--accent);font-size:.9rem}
-footer{color:var(--muted);font-size:.82rem}
+.hero{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:20px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:28px 28px 0;overflow:hidden}
+.hero .txt{padding-bottom:28px;min-width:0}
+.hero img{width:min(340px,38vw);height:auto;display:block}
+@media (max-width:640px){.hero{grid-template-columns:minmax(0,1fr);padding:22px 20px 0}.hero .txt{padding-bottom:4px}.hero img{width:min(260px,80%);justify-self:center}}
+footer{color:var(--muted);font-size:.82rem;display:flex;align-items:center;gap:12px;border-top:1px solid var(--line);padding-top:18px}
+footer img{width:72px;height:auto}
 @media (prefers-reduced-motion:reduce){.tile,nav.tabs a{transition:none}.tile:hover{transform:none}}
 </style>
 
 <header class="bar">
   <div class="wrap">
-    <div class="brand">굿리치WM본부 <span>업무 허브</span></div>
+    <div class="brand"><img src="assets/goodrich-logo.png" alt="GoodRich"><span>WM본부 업무 허브</span></div>
     <nav class="tabs" aria-label="바로가기">
       <a href="saengbo.html" target="_blank" rel="noopener">생보 시책 계산기 <span class="ar">↗</span></a>
       <a href="sonbo.html" target="_blank" rel="noopener">손보 시책 계산기 <span class="ar">↗</span></a>
@@ -60,10 +65,13 @@ footer{color:var(--muted);font-size:.82rem}
 
 <main>
   <div class="wrap">
-    <div>
-      <h1>자주 쓰는 업무 도구</h1>
-      <p class="lead">굿리치 WM본부 황원모 지점장 · 상단 탭이나 아래 카드를 누르면 각 도구가 열립니다.</p>
-    </div>
+    <section class="hero">
+      <div class="txt">
+        <h1>자주 쓰는 업무 도구</h1>
+        <p class="lead">굿리치 WM본부 황원모 지점장 · 상단 탭이나 아래 카드를 누르면 각 도구가 열립니다.</p>
+      </div>
+      <img src="assets/char-study.png" alt="" width="720" height="347">
+    </section>
     <div class="grid">
       <a class="tile" href="saengbo.html" target="_blank" rel="noopener">
         <span class="tag">생명보험</span>
@@ -96,7 +104,7 @@ footer{color:var(--muted);font-size:.82rem}
         <span class="go">열기 ↗</span>
       </a>
     </div>
-    <footer>굿리치 WM본부 황원모 지점장</footer>
+    <footer><img src="assets/char-heart.png" alt="" width="320" height="201"><span>굿리치 WM본부 황원모 지점장</span></footer>
   </div>
 </main>
 
