@@ -75,6 +75,7 @@ details.sec[open]>summary{margin-bottom:6px}
 .pre>span{display:flex;align-items:center;padding:0 10px;background:var(--sunk);color:var(--ink);font-weight:600;font-size:13px;white-space:nowrap;border-right:1px solid var(--line)}
 .pre input{border:0;border-radius:0;background:transparent}
 .apibox{display:grid;gap:8px;border:1px solid var(--line);border-radius:8px;padding:12px;background:var(--bg)}
+.row3{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
 .mul{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .mul label{display:grid;gap:2px;font-size:11.5px;color:var(--muted)}
 .mul input{padding:4px 6px;font-size:13px}
@@ -246,10 +247,25 @@ img{max-width:100%}
           <label class="f">월 소득 (만원)
             <input id="c-income" inputmode="numeric" placeholder="예: 450"></label>
         </div>
+        <div class="row3">
+          <label class="f">결혼 여부
+            <select id="c-mar"><option value="">선택 안 함</option><option>미혼</option><option>기혼</option></select></label>
+          <label class="f" id="w-kids" hidden>자녀 유무
+            <select id="c-kids"><option value="무">무</option><option value="유">유</option></select></label>
+          <label class="f" id="w-kidsn" hidden>자녀 수
+            <select id="c-kidsn"><option>1명</option><option>2명</option><option>3명</option><option>3명 이상</option></select></label>
+        </div>
+        <div class="row">
+          <label class="f">가구 소득 구분
+            <select id="c-earner"><option value="">선택 안 함</option><option value="가장">주소득자(가장)</option><option value="맞벌이">맞벌이</option><option value="가장 아님">가장 아님</option></select></label>
+          <label class="f">주택자금대출
+            <select id="c-loan"><option value="">선택 안 함</option><option>없음</option><option>있음</option></select></label>
+        </div>
+        <p class="hint" id="fam-hint" hidden></p>
         <label class="f">병력
           <textarea id="c-hist" placeholder="예: 2023년 갑상선 결절 추적관찰 / 고혈압약 복용 중 / 2021년 맹장 수술"></textarea></label>
-        <label class="f">가족·메모
-          <input id="c-memo" placeholder="예: 배우자, 자녀 2명(초등) / 부친 뇌졸중 가족력"></label>
+        <label class="f">메모
+          <input id="c-memo" placeholder="예: 부친 뇌졸중 가족력 / 자녀 초등학생"></label>
         <p class="hint">고객명과 생년월일은 진단서에만 표시하고 분석 요청에는 보내지 않습니다. 분석에는 나이만 전달됩니다.</p>
       </section>
 
@@ -477,7 +493,7 @@ function groupLines(items){
 function analyzeRules(oz, cfg){
   const man = v => { v = Number(v)||0; if(!v) return "0원"; return v >= 10000 ? `${Math.floor(v/10000)}억${v%10000?` ${(v%10000).toLocaleString()}만`:""}원` : `${v.toLocaleString()}만원`; };
   const skipTxt = cfg.skip || "";
-  const isSkip = it => it.tags.some(t => skipTxt.includes(t)) || (it.key==="carehosp" && /간병/.test(skipTxt));
+  const isSkip = it => !(cfg.deathRequired && it.tags.includes("사망")) && it.tags.some(t => skipTxt.includes(t)) || (it.key==="carehosp" && /간병/.test(skipTxt));
   const birthYear = cfg.birthYear || (oz.profile.age ? new Date().getFullYear() - oz.profile.age : null);
   const coverage = [], dup = [], unn = [], risks = [];
   const contractsOf = it => oz.contracts.filter(c => it.src.some(s => (c.cover[s]||0) > 0));
@@ -487,6 +503,7 @@ function analyzeRules(oz, cfg){
     const owners = contractsOf(it);
     let target = cfg.targets[it.key];
     if(it.key === "death") target = cfg.deathTarget;
+    if(it.key === "adeath" && cfg.adeathTarget != null) target = cfg.adeathTarget;
     const over = cfg.over[it.key] || 0;
     const skip = isSkip(it);
     let status, comment = "", tgtTxt;
@@ -502,10 +519,11 @@ function analyzeRules(oz, cfg){
     } else if(Number(target) === 0){
       tgtTxt = "가입 여부"; status = cur ? "적정" : "미가입";
     } else {
-      target = Number(target); tgtTxt = man(target);
+      target = Number(target); tgtTxt = man(target) + ((it.key === "death" || it.key === "adeath") && cfg.deathNote ? ` (${cfg.deathNote})` : "");
       status = !cur ? "미가입" : cur < target ? "부족" : (over && cur > target * over) ? "과다" : "적정";
       if(status === "부족") comment = `목표보다 ${man(target - cur)} 부족`;
       if(status === "과다") comment = `목표의 ${(cur/target).toFixed(1)}배`;
+      if(cfg.deathRequired && (it.key === "death" || it.key === "adeath") && (status === "부족" || status === "미가입")) comment = (comment ? comment + " · " : "") + "자녀가 있는 가장 — 사망 시 가족 생활비 공백";
     }
     // 비례보상 담보 중복
     if(it.prop && cfg.rules.bilye !== false && owners.length > 1 && !(it.key==="silson" && cfg.rules.silson === false)){
@@ -701,6 +719,25 @@ function applyCriteria(c){
 }
 ["#k-rmin","#k-rmax","#k-rbase"].forEach(s=> $(s).addEventListener("input", renderApplied));
 
+/* 가족 구성 */
+function family(){
+  const mar = $("#c-mar").value, kids = mar === "기혼" && $("#c-kids").value === "유", kidsN = kids ? $("#c-kidsn").value : "";
+  const earner = $("#c-earner").value, loan = $("#c-loan").value;
+  const famTxt = [mar, mar === "기혼" ? (kids ? `자녀 ${kidsN}` : "자녀 없음") : ""].filter(Boolean).join(" · ");
+  return { mar, kids, kidsN, earner, loan, famTxt };
+}
+function syncFamily(){
+  const f = family();
+  $("#w-kids").hidden = f.mar !== "기혼";
+  $("#w-kidsn").hidden = !(f.mar === "기혼" && $("#c-kids").value === "유");
+  const a = applied(), h = $("#fam-hint");
+  h.hidden = !a.deathRule;
+  h.textContent = a.deathRule === "가장" ? (a.income ? `자녀가 있는 가장 — 질병·상해사망 필수, 목표 ${manOf(a.death)} (3년치 생활비)` : "자녀가 있는 가장 — 월 소득을 넣으면 사망 목표를 3년치 생활비로 계산합니다")
+               : a.deathRule === "맞벌이" ? "맞벌이 — 사망 목표는 연령대·자산규모 기본 금액을 적용합니다" : "";
+  renderApplied();
+}
+["#c-mar","#c-kids","#c-kidsn","#c-earner","#c-loan","#c-income"].forEach(s=> $(s).addEventListener("input", syncFamily));
+
 /* 이번 고객에게 적용되는 기준 계산 */
 function applied(){
   const c = getCriteria(), bk = bandKey($("#c-age").value), band = c.bands.find(b=>b.k===bk);
@@ -708,7 +745,14 @@ function applied(){
   const income = Number($("#c-income").value)||0;
   const range = income ? { lo: income*c.rmin/100, hi: income*c.rmax/100, by:`소득 ${income.toLocaleString()}만원의 ${c.rmin}~${c.rmax}%` }
                        : { lo: band.pmin, hi: band.pmax, by:`${band.name} 적정 보험료` };
-  return { c, band, asset, mul, death, income, range };
+  const fam = family();
+  let deathFinal = death, adeathT = null, deathRule = "", deathBy = death ? `${manOf(band.death)} × 자산 배수 ${mul}` : "";
+  if(fam.earner === "가장" && fam.kids){
+    deathRule = "가장";
+    if(income){ deathFinal = income * 36; adeathT = deathFinal; deathBy = `3년치 생활비 · 월 소득 ${income.toLocaleString()}만원 × 36`; }
+    else { deathFinal = death || band.death || 10000; deathBy = "월 소득 미입력 — 기본 금액 적용"; }
+  } else if(fam.earner === "맞벌이"){ deathRule = "맞벌이"; deathBy = death ? `기본 필요 금액 (${deathBy})` : ""; }
+  return { c, band, asset, mul, death: deathFinal, baseDeath: death, adeathT, deathRule, deathBy, fam, income, range };
 }
 function renderApplied(){
   if(!$("#bands").children.length) return;
@@ -716,7 +760,7 @@ function renderApplied(){
   document.querySelectorAll(".band").forEach(el=>{ const on = el.dataset.k === a.band.k; el.hidden = !on; });
   $("#applied").innerHTML = `<div>이번 고객 적용 · <b>${esc(a.band.name)}</b> · 자산 ${esc(ASSETS[a.asset][0])}</div>
     <div>적정 보험료 월 <b>${a.range.lo.toLocaleString(undefined,{maximumFractionDigits:1})}~${a.range.hi.toLocaleString(undefined,{maximumFractionDigits:1})}만원</b> (${esc(a.range.by)}, ${esc(a.c.rbase)} 기준)</div>
-    <div>사망보장 목표 <b>${a.death ? manOf(a.death) : "불필요"}</b>${a.death && a.mul!==1 ? ` (${manOf(a.band.death)} × ${a.mul})` : ""}</div>`;
+    <div>사망보장 목표 <b>${a.death ? manOf(a.death) : "불필요"}</b>${a.death && a.deathBy ? ` (${esc(a.deathBy)})` : ""}${a.deathRule==="가장" ? " · 질병·상해사망 필수" : ""}</div>`;
 }
 
 
@@ -742,6 +786,7 @@ function staff(){ const o = $("#s-org").value.replace(/^\s*(\(주\))?\s*굿리�
 const last = store.get("bj.last", "");
 refreshPresetList(last);
 applyCriteria(last && presets()[last] ? presets()[last] : {});
+syncFamily();
 
 /* ---------- 파일 ---------- */
 let files = [];
@@ -830,7 +875,8 @@ function buildPrompt(docText, imgCount, ozBlock){
     나이: ag ? `만 ${ag.man}세 (보험나이 ${ag.ins}세)` : $("#c-age").selectedOptions[0].text,
     성별: $("#c-sex").value || "미입력", 직업: $("#c-job").value || "미입력", 직업위험등급: $("#c-risk").value || "미입력",
     자산규모: ASSETS[a.asset][0], 월소득: a.income ? a.income.toLocaleString() + "만원" : "미입력",
-    병력: $("#c-hist").value.trim() || "없음(미입력)", 가족메모: $("#c-memo").value || "없음"
+    가족: a.fam.famTxt || "미입력", 가구소득구분: a.fam.earner === "가장" ? "주소득자(가장)" : (a.fam.earner || "미입력"), 주택자금대출: a.fam.loan || "미입력",
+    병력: $("#c-hist").value.trim() || "없음(미입력)", 메모: $("#c-memo").value || "없음"
   };
   const targets = ITEMS.filter(it => it.key !== "death" && c.tg[it.key] !== "").map(it=> `- ${it.label}: 목표 ${Number(c.tg[it.key]) ? manOf(c.tg[it.key]) : "가입 여부만 확인"}${c.ov[it.key] ? `, 목표의 ${c.ov[it.key]}배 초과 시 과다` : ""}`).join("\n");
   const rules = RULES.filter(x=> r[x.id]).map(x=> "- " + x.label.replace(/<input[^>]*>/, r.mat)).join("\n");
@@ -844,7 +890,7 @@ ${Object.entries(cust).map(([k,v])=>`- ${k}: ${v}`).join("\n")}
 연령대 기준(${a.band.name}):
 - 중점 보장: ${a.band.focus || "지정 없음"}
 ${/연금/.test(a.band.focus) ? `- 연금보험은 이 연령대에 필요한 상품입니다. 저축성으로 분류하되 불필요로 보지 말고, 가입이 없으면 coverage에 item "연금보험(노후 준비)" status "미가입"으로 넣으세요.\n` : ""}- 불필요 보장: ${a.band.skip || "없음"} → 이 항목에 낸 보험료는 coverage status "불필요"로 판정하고 unnecessary에도 올리세요.
-- 사망보장 목표: ${a.death ? manOf(a.death) + ` (연령대 ${manOf(a.band.death)} × 자산규모 ${ASSETS[a.asset][0]} 배수 ${a.mul})` : "불필요"}
+- 사망보장 목표: ${a.death ? manOf(a.death) + ` (${a.deathBy})` : "불필요"}${a.deathRule === "가장" ? `\n- 자녀가 있는 가장이므로 사망보장은 필수입니다. 질병사망·상해사망 각각 ${manOf(a.death)}(3년치 생활비)을 목표로 판정하고, 연령대 불필요 보장에 사망이 있어도 불필요로 보지 마세요.` : ""}
 - 적정 월 보험료: ${a.range.lo.toLocaleString()}~${a.range.hi.toLocaleString()}만원 (${a.range.by}, ${c.rbase} 보험료 기준). 미만=여유, 범위 안=충분, 초과=과다.
 목표 보장금액:
 ${targets}
@@ -959,8 +1005,12 @@ function render(d, ctx){
         <div><dt>자산규모</dt><dd>${esc(cu.asset)}</dd></div>
         <div><dt>월 소득</dt><dd>${cu.income ? manOf(cu.income) : "—"}</dd></div>
         <div><dt>적용 기준</dt><dd>${esc(a.band.name)}</dd></div>
+        <div><dt>가족</dt><dd>${esc(cu.fam || "—")}</dd></div>
+        <div><dt>가구 소득 구분</dt><dd>${esc(cu.earner || "—")}</dd></div>
+        <div><dt>주택자금대출</dt><dd>${esc(cu.loan || "—")}</dd></div>
+        <div><dt>사망보장 목표</dt><dd>${a.death ? manOf(a.death) : "불필요"}${a.deathRule==="가장" && a.income ? " (3년치 생활비)" : ""}</dd></div>
         <div class="wide"><dt>병력</dt><dd>${esc(cu.hist || "없음")}</dd></div>
-        ${cu.memo?`<div class="wide"><dt>가족·메모</dt><dd>${esc(cu.memo)}</dd></div>`:""}
+        ${cu.memo?`<div class="wide"><dt>메모</dt><dd>${esc(cu.memo)}</dd></div>`:""}
       </dl>
     </section>
 
@@ -1068,7 +1118,7 @@ async function makePdf(){
 }
 function toText(d, ctx){
   const s=d.summary||{}, cu=ctx.cust, a=ctx.applied, pv=premiumVerdict(d, a), nm = n=>cleanName(n, ctx.klass.paren), L=[];
-  L.push(`■ ${cu.name||"고객"}님 보장 진단서`, `생년월일 ${cu.birth||"—"} · ${cu.ageTxt} · ${cu.job||"직업 미입력"} · 자산 ${cu.asset}${cu.income?` · 월소득 ${manOf(cu.income)}`:""}`, `병력: ${cu.hist||"없음"}`);
+  L.push(`■ ${cu.name||"고객"}님 보장 진단서`, `생년월일 ${cu.birth||"—"} · ${cu.ageTxt} · ${cu.job||"직업 미입력"} · 자산 ${cu.asset}${cu.income?` · 월소득 ${manOf(cu.income)}`:""}`, `가족 ${cu.fam||"—"} · 가구 소득 ${cu.earner||"—"} · 주택자금대출 ${cu.loan||"—"} · 사망보장 목표 ${a.death ? manOf(a.death) : "불필요"}${a.deathRule==="가장" && a.income ? " (3년치 생활비)" : ""}`, `병력: ${cu.hist||"없음"}`);
   L.push("", `■ 종합 — ${s.headline||""} (보장 적정도 ${s.score??"-"}점)`); (s.points||[]).forEach(p=>L.push(`- ${p}`));
   L.push("", `■ 보험료 적정성: ${pv.v}`, `${a.c.rbase} 월 ${won(pv.base)}${pv.ratio!=null?` (소득의 ${pv.ratio.toFixed(1)}%)`:""} / 적정 ${man(pv.lo)}~${man(pv.hi)} / 보장성 ${won(pv.prot)}, 저축성 ${won(pv.sav)}`);
   L.push("", "■ 보장 항목별 진단"); (d.coverage||[]).forEach(c=>L.push(`- ${c.item}: 현재 ${c.current} / 목표 ${c.target} → ${c.status}${c.comment?` (${c.comment})`:""}`));
@@ -1094,6 +1144,7 @@ function currentCtx(){
     name: $("#c-name").value.trim(), birth: $("#c-birth").value.replace(/-/g,"."),
     ageTxt: ag ? `만 ${ag.man}세 (보험나이 ${ag.ins}세)` : $("#c-age").selectedOptions[0].text,
     job: $("#c-job").value.trim(), risk: $("#c-risk").value, asset: ASSETS[a.asset][0], income: a.income,
+    fam: a.fam.famTxt, earner: a.fam.earner === "가장" ? "주소득자(가장)" : a.fam.earner, loan: a.fam.loan,
     hist: $("#c-hist").value.trim(), memo: $("#c-memo").value.trim() }, staff: staff() };
 }
 
@@ -1130,7 +1181,7 @@ const EXAMPLE = {
 function exampleCtx(){
   const ctx = currentCtx();
   ctx.example = true;
-  ctx.cust = { ...ctx.cust, name:"예시 고객", birth:"1989.08.20", ageTxt:"만 37세 (보험나이 37세)", job:"사무직 회사원", risk:"1급(사무·관리)", hist:"2023년 갑상선 결절 추적관찰", memo:"배우자, 자녀 1명" };
+  ctx.cust = { ...ctx.cust, name:"예시 고객", birth:"1989.08.20", ageTxt:"만 37세 (보험나이 37세)", job:"사무직 회사원", risk:"1급(사무·관리)", hist:"2023년 갑상선 결절 추적관찰", memo:"", fam:"기혼 · 자녀 1명", earner:"맞벌이", loan:"있음" };
   ctx.applied = { ...ctx.applied, band: ctx.applied.c.bands.find(b=>b.k==="30"), range:{lo:10, hi:19, by:"30대 적정 보험료"} };
   return ctx;
 }
@@ -1147,7 +1198,7 @@ function parseJson(t){
 }
 function ruleCfg(){
   const a = applied(), c = a.c, b = $("#c-birth").value;
-  return { targets: c.tg, over: c.ov, deathTarget: a.death, skip: a.band.skip, focus: a.band.focus, bandName: a.band.name,
+  return { targets: c.tg, over: c.ov, deathTarget: a.death, adeathTarget: a.adeathT, deathRequired: a.deathRule === "가장", deathNote: a.deathRule === "가장" && a.income ? "3년치 생활비" : "", skip: a.band.skip, focus: a.band.focus, bandName: a.band.name,
     rules: c.rules, matAge: Number(c.rules.mat)||90, birthYear: b ? Number(b.slice(0,4)) : null, hasHist: !!$("#c-hist").value.trim() };
 }
 function ozBlock(oz){
